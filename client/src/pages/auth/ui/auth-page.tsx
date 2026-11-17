@@ -1,3 +1,4 @@
+import { LanguageSwitch, useI18n } from '@/shared/i18n'
 import { useState, type FormEvent } from 'react'
 import {
   Link,
@@ -13,6 +14,8 @@ const inputClass =
   'h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm outline-none transition placeholder:text-slate-400 focus:border-accent focus:ring-2 focus:ring-sky-100'
 
 export function AuthPage() {
+  const { t } = useI18n()
+
   const [params] = useSearchParams()
   const register = params.get('mode') === 'register'
   const { session, loading, login } = useAuth()
@@ -74,7 +77,7 @@ export function AuthPage() {
   if (loading)
     return (
       <p className="py-16 text-muted" role="status">
-        Проверяем аккаунт…
+        {t('Проверяем аккаунт…')}
       </p>
     )
   if (session) return <Navigate to={destination} replace />
@@ -86,25 +89,31 @@ export function AuthPage() {
           INTC / STUDENT SUPPORTER
         </p>
         <h1 className="mt-3 text-[clamp(1.65rem,4vw,3.1rem)] leading-[1.08] font-extrabold tracking-tight text-ink">
-          Твой колледж.
+          {t('Твой колледж.')}
           <br />
-          <span className="text-accent">Твой аккаунт.</span>
+          <span className="text-accent">{t('Твой аккаунт.')}</span>
         </h1>
         <p className="mt-3 max-w-md text-sm leading-6 text-muted sm:text-base sm:leading-7">
-          Войди, чтобы открыть расписание, документы и инструменты для учёбы.
+          {t('Войди, чтобы открыть расписание, документы и инструменты для учёбы.')}
         </p>
         <Link
           to="/"
           className="mt-4 inline-flex text-sm font-semibold text-ink hover:text-accent lg:mt-7"
         >
-          ← На главную
+          {t('← На главную')}
         </Link>
       </div>
       <div className="w-full max-w-[560px] rounded-[26px] border border-slate-200 bg-white p-5 shadow-[0_18px_60px_-40px_rgba(24,43,61,0.28)] sm:p-7 lg:p-8">
-        <nav className="mb-5 flex rounded-xl bg-slate-100 p-1" aria-label="Авторизация">
+        <div className="mb-4 flex justify-end">
+          <LanguageSwitch />
+        </div>
+        <nav
+          className="mb-5 flex rounded-xl bg-slate-100 p-1"
+          aria-label={t('Авторизация')}
+        >
           {[
-            ['login', 'Вход'],
-            ['register', 'Регистрация'],
+            ['login', t('Вход')],
+            ['register', t('Регистрация')],
           ].map(([mode, label]) => (
             <Link
               key={mode}
@@ -121,28 +130,28 @@ export function AuthPage() {
           ))}
         </nav>
         <h2 className="text-2xl font-bold text-ink">
-          {register ? 'Создать аккаунт' : 'С возвращением'}
+          {register ? t('Создать аккаунт') : t('С возвращением')}
         </h2>
         <p className="mt-1.5 mb-4 text-sm leading-5 text-muted">
           {register
-            ? 'Заполни данные студента и укажи свою группу.'
-            : 'Введи почту и пароль своего аккаунта.'}
+            ? t('Заполни данные студента и укажи свою группу.')
+            : t('Введи почту и пароль своего аккаунта.')}
         </p>
         {success && (
           <p className="mb-5 rounded-xl bg-sky-50 p-4 text-sm text-ink" role="status">
-            Аккаунт создан. Войдите с указанной почтой и паролем.
+            {t('Аккаунт создан. Войдите с указанной почтой и паролем.')}
           </p>
         )}
         <form key={location.search} onSubmit={submit} className="grid gap-3">
           <fieldset disabled={busy} className="grid gap-3 disabled:opacity-60">
             <legend className="sr-only">
-              {register ? 'Регистрация студента' : 'Вход в аккаунт'}
+              {register ? t('Регистрация студента') : t('Вход в аккаунт')}
             </legend>
             {register && (
               <>
                 <div className="grid grid-cols-2 gap-3">
                   <label className="grid gap-1.5 text-xs font-semibold text-ink sm:text-sm">
-                    Фамилия
+                    {t('Фамилия')}
                     <input
                       name="last_name"
                       autoComplete="family-name"
@@ -152,7 +161,7 @@ export function AuthPage() {
                     />
                   </label>
                   <label className="grid gap-1.5 text-xs font-semibold text-ink sm:text-sm">
-                    Имя
+                    {t('Имя')}
                     <input
                       name="first_name"
                       autoComplete="given-name"
@@ -163,19 +172,19 @@ export function AuthPage() {
                   </label>
                 </div>
                 <label className="grid gap-1.5 text-xs font-semibold text-ink sm:text-sm">
-                  Группа
+                  {t('Группа')}
                   <input
                     name="group_name"
                     required
                     maxLength={50}
-                    placeholder="Например, ИС-23-1"
+                    placeholder={t('Например, ИС-23-1')}
                     className={inputClass}
                   />
                 </label>
               </>
             )}
             <label className="grid gap-1.5 text-xs font-semibold text-ink sm:text-sm">
-              Почта
+              {t('Почта')}
               <input
                 name="email"
                 type="email"
@@ -187,7 +196,7 @@ export function AuthPage() {
               />
             </label>
             <label className="grid gap-1.5 text-xs font-semibold text-ink sm:text-sm">
-              Пароль
+              {t('Пароль')}
               <input
                 name="password"
                 type="password"
@@ -202,10 +211,10 @@ export function AuthPage() {
             {register && (
               <>
                 <p id="password-hint" className="-mt-2 text-xs text-muted">
-                  От 8 до 128 символов.
+                  {t('От 8 до 128 символов.')}
                 </p>
                 <label className="grid gap-1.5 text-xs font-semibold text-ink sm:text-sm">
-                  Повтори пароль
+                  {t('Повтори пароль')}
                   <input
                     name="confirm_password"
                     type="password"
@@ -221,14 +230,14 @@ export function AuthPage() {
           </fieldset>
           {error && (
             <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">
-              {error}
+              {t(error)}
             </p>
           )}
           <button
             disabled={busy}
             className="mt-1 min-h-11 rounded-xl bg-ink px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-wait disabled:opacity-60"
           >
-            {busy ? 'Подождите…' : register ? 'Зарегистрироваться' : 'Войти'}
+            {busy ? t('Подождите…') : register ? t('Зарегистрироваться') : t('Войти')}
           </button>
         </form>
       </div>

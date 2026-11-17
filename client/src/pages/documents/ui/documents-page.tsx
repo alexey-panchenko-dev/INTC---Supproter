@@ -1,3 +1,4 @@
+import { useI18n } from '@/shared/i18n'
 import type { CollegeDocument } from '@/entities/document'
 import { useApiQuery } from '@/shared/api/use-api-query'
 import { safeLink } from '@/shared/lib/safe-link'
@@ -5,19 +6,21 @@ import { PageHeading } from '@/shared/ui/page-heading'
 import { QueryState } from '@/shared/ui/query-state'
 
 export function DocumentsPage() {
+  const { t } = useI18n()
+
   const { data, loading, error } = useApiQuery<CollegeDocument[]>('documents')
 
   return (
     <section className="min-h-[65vh] py-8">
       <PageHeading
-        title="Жизнь колледжа"
-        description="Официальные документы и полезная информация."
+        title={t('Жизнь колледжа')}
+        description={t('Официальные документы и полезная информация.')}
       />
       <QueryState
         loading={loading}
-        error={error}
+        error={t(error)}
         empty={!data?.length}
-        emptyMessage="Документы и информация о колледже скоро появятся здесь."
+        emptyMessage={t('Документы и информация о колледже скоро появятся здесь.')}
       >
         {data?.map((document) => (
           <article
@@ -32,7 +35,7 @@ export function DocumentsPage() {
               target="_blank"
               rel="noopener noreferrer"
             >
-              Открыть документ ↗
+              {t('Открыть документ ↗')}
             </a>
           </article>
         ))}

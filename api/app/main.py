@@ -7,11 +7,12 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.ai_chat import ai_router
+from app.applications import router as applications_router
 from app.auth import require_admin, require_approved_student, require_same_origin
 from app.auth import router as auth_router
 from app.db import get_db
-from app.models import Application, Document, Lesson
-from app.schemas import ApplicationOut, DocumentOut, LessonOut, ScheduleInput
+from app.models import Document, Lesson
+from app.schemas import DocumentOut, LessonOut, ScheduleInput
 
 app = FastAPI(title="INTC - Supporter API", version="0.1.0")
 router = APIRouter(prefix="/api/v1")
@@ -71,12 +72,8 @@ def save_schedule(
     return lessons
 
 
-@protected.get("/applications", response_model=list[ApplicationOut])
-def applications(db: DB):
-    return db.scalars(select(Application).order_by(Application.name).limit(200)).all()
-
-
 app.include_router(router)
+app.include_router(applications_router)
 app.include_router(auth_router)
 app.include_router(protected)
 app.include_router(ai_router)

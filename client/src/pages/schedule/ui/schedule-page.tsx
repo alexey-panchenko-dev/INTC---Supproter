@@ -1,3 +1,4 @@
+import { useI18n } from '@/shared/i18n'
 import { useState } from 'react'
 import type { Lesson } from '@/entities/lesson'
 import { useSession } from '@/entities/session'
@@ -12,6 +13,8 @@ function today() {
 }
 
 export function SchedulePage() {
+  const { t } = useI18n()
+
   const session = useSession()
   const [group, setGroup] = useState(session?.group_name ?? '')
   const [day, setDay] = useState(today)
@@ -27,15 +30,15 @@ export function SchedulePage() {
   return (
     <section className="min-h-[65vh] py-8">
       <PageHeading
-        title="Расписание"
-        description="Выбери группу и дату, чтобы увидеть свои пары."
+        title={t('Расписание')}
+        description={t('Выбери группу и дату, чтобы увидеть свои пары.')}
       />
       <div className="mb-8 flex flex-col gap-5 sm:flex-row">
         <label className="grid gap-2 text-xs">
-          Группа
+          {t('Группа')}
           <input
             className="rounded-lg border border-slate-200 bg-white p-3"
-            placeholder="Например, ИС-23-1"
+            placeholder={t('Например, ИС-23-1')}
             maxLength={50}
             value={group}
             disabled={editing}
@@ -46,7 +49,7 @@ export function SchedulePage() {
           />
         </label>
         <label className="grid gap-2 text-xs">
-          Дата
+          {t('Дата')}
           <input
             className="rounded-lg border border-slate-200 bg-white p-3"
             type="date"
@@ -61,7 +64,7 @@ export function SchedulePage() {
       </div>
       {success && (
         <p role="status" className="mb-5 text-sm text-emerald-700">
-          {success}
+          {t(success)}
         </p>
       )}
       {session?.role === 'admin' &&
@@ -89,17 +92,17 @@ export function SchedulePage() {
             }}
             className="mb-6 min-h-11 rounded-lg bg-accent px-5 text-sm text-white"
           >
-            Заполнить / изменить расписание дня
+            {t('Заполнить / изменить расписание дня')}
           </button>
         ))}
       <QueryState
         loading={loading}
-        error={error}
+        error={t(error)}
         empty={!data?.length}
         emptyMessage={
           group.trim()
-            ? 'На выбранную дату пары ещё не добавлены.'
-            : 'Введи свою группу, чтобы посмотреть расписание.'
+            ? t('На выбранную дату пары ещё не добавлены.')
+            : t('Введи свою группу, чтобы посмотреть расписание.')
         }
       >
         {data?.map((lesson) => (
@@ -112,7 +115,7 @@ export function SchedulePage() {
             </p>
             <h2 className="my-3 font-bold">{lesson.subject}</h2>
             <p className="text-sm text-muted">
-              {lesson.teacher} · ауд. {lesson.room}
+              {lesson.teacher} · {t('ауд.')} {lesson.room}
             </p>
           </article>
         ))}

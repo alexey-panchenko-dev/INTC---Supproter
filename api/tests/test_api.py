@@ -337,7 +337,7 @@ def test_chat_stream_route_uses_knowledge_and_returns_chunks(client, monkeypatch
         ai_chat, "load_knowledge", lambda db: "Колледж находится в Алматы."
     )
 
-    def answer(prompt, question):
+    def answer(prompt, question, language="ru"):
         assert "Колледж находится в Алматы." in prompt
         assert question == "Где колледж?"
         yield "В "
@@ -387,3 +387,134 @@ def test_chat_stream_handles_provider_error(monkeypatch):
 
     monkeypatch.setattr(ai_chat, "get_client", broken_client)
     assert "Ошибка ИИ-сервиса" in "".join(ai_chat.stream_answer("Контекст", "Вопрос"))
+
+
+def application_payload(**overrides):
+    return {
+        "name": "Example IDE",
+        "description": "Редактор кода",
+        "description_kk": "Код редакторы",
+        "url": "https://example.com/download",
+        "logo_url": "/logos/vscode.png",
+        "pricing": "freemium",
+        **overrides,
+    }
+
+
+def test_application_admin_crud_persists_both_languages(client):
+    login_schedule_admin(client)
+    response = client.post("/api/v1/applications", json=application_payload())
+    assert response.status_code == 201
+    item = response.json()
+    url = f"/api/v1/applications/{item['id']}"
+    assert item["description_kk"] == "Код редакторы"
+    assert "subject" not in item and "subject_kk" not in item
+    assert item["pricing"] == "freemium"
+    response = client.put(url, json=application_payload(name="Updated", pricing="paid"))
+    assert response.status_code == 200
+    assert client.get("/api/v1/applications").json()[0]["name"] == "Updated"
+    assert (
+        client.get("/api/v1/applications").json()[0]["description_kk"] == "Код редакторы"
+    )
+    assert client.delete(url).status_code == 204
+    assert client.get("/api/v1/applications").json() == []
+    assert client.put(url, json=application_payload()).status_code == 404
+    assert client.delete(url).status_code == 404
+
+
+def test_application_write_protection_for_every_mutation(client):
+    del app.dependency_overrides[require_approved_student]
+
+    def writes(status, headers=None):
+        assert (
+            client.post(
+                "/api/v1/applications", json=application_payload(), headers=headers
+            ).status_code
+            == status
+        )
+        assert (
+            client.put(
+                "/api/v1/applications/1", json=application_payload(), headers=headers
+            ).status_code
+            == status
+        )
+        assert (
+            client.delete("/api/v1/applications/1", headers=headers).status_code == status
+        )
+
+    writes(401)
+    client.post("/api/v1/auth/register", json=student_payload())
+    client.post(
+        "/api/v1/auth/login",
+        json={"email": "student@example.com", "password": student_payload()["password"]},
+    )
+    assert client.get("/api/v1/applications").status_code == 200
+    writes(403)
+    app.dependency_overrides[require_approved_student] = lambda: None
+    login_schedule_admin(client)
+    writes(403, {"Origin": "https://evil.example"})
+    db = app.dependency_overrides[get_db]()
+    db.scalar(select(User).where(User.role == "admin")).status = "blocked"
+    db.commit()
+    writes(403)
+
+
+@pytest.mark.parametrize(
+    "changes",
+    [
+        {"name": " "},
+        {"description_kk": ""},
+        {"subject_kk": " "},
+        {"url": "javascript:alert(1)"},
+        {"url": "https://user:pass@example.com"},
+        {"logo_url": "data:image/svg+xml,evil"},
+        {"logo_url": "//example.com/logo.png"},
+        {"logo_url": "/logos/../secret"},
+        {"pricing": "unknown"},
+        {"name": "x" * 201},
+    ],
+)
+def test_application_validation_keeps_saved_card(client, changes):
+    login_schedule_admin(client)
+    item = client.post("/api/v1/applications", json=application_payload()).json()
+    url = f"/api/v1/applications/{item['id']}"
+    assert (
+        client.post(
+            "/api/v1/applications", json=application_payload(**changes)
+        ).status_code
+        == 422
+    )
+    assert client.put(url, json=application_payload(**changes)).status_code == 422
+    saved = client.get("/api/v1/applications").json()
+    assert len(saved) == 1 and saved[0]["name"] == "Example IDE"
+
+
+def test_chat_kazakh_language_and_fallback(client, monkeypatch):
+    from app import ai_chat
+
+    monkeypatch.setattr(ai_chat.ai_settings, "api_key", "test-only")
+    monkeypatch.setattr(ai_chat, "load_knowledge", lambda db: "")
+    response = client.post(
+        "/api/v1/chat", json={"message": "Колледж қайда?", "language": "kk"}
+    )
+    assert response.text == "Әзірге бұл туралы ақпаратым жоқ."
+    monkeypatch.setattr(ai_chat, "load_knowledge", lambda db: "Алматы")
+
+    def answer(prompt, question, language):
+        assert "тек қазақ тілінде" in prompt
+        assert language == "kk"
+        yield "Алматыда."
+
+    monkeypatch.setattr(ai_chat, "stream_answer", answer)
+    assert (
+        client.post(
+            "/api/v1/chat", json={"message": "Колледж қайда?", "language": "kk"}
+        ).text
+        == "Алматыда."
+    )
+    assert (
+        client.post(
+            "/api/v1/chat", json={"message": "Question", "language": "invalid"}
+        ).status_code
+        == 422
+    )

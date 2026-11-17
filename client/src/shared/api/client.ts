@@ -7,11 +7,17 @@ export class ApiError extends Error {
 }
 
 export async function apiRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const response = await fetch(`/api/v1/${path}`, {
-    ...options,
-    credentials: 'same-origin',
-    headers: { 'Content-Type': 'application/json', ...options.headers },
-  })
+  let response: Response
+  try {
+    response = await fetch(`/api/v1/${path}`, {
+      ...options,
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', ...options.headers },
+    })
+  } catch (reason) {
+    if (options.signal?.aborted) throw reason
+    throw new ApiError('Не удалось связаться с сервером.', 0)
+  }
   if (!response.ok) {
     const payload = await response.json().catch(() => null)
     const message =

@@ -1,9 +1,12 @@
+import { LanguageSwitch, useI18n } from '@/shared/i18n'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useState } from 'react'
 import { useAuth } from '@/entities/session'
 import { navigation } from '@/shared/config/navigation'
 
 export function PortalLayout() {
+  const { t } = useI18n()
+
   const { session, loading, logout } = useAuth()
   const [logoutError, setLogoutError] = useState('')
   const [loggingOut, setLoggingOut] = useState(false)
@@ -43,11 +46,11 @@ export function PortalLayout() {
             </span>
           </Link>
           <p className="mt-14 mb-5 hidden text-[9px] tracking-[0.15em] text-slate-400 md:block">
-            ТВОЙ КОЛЛЕДЖ РЯДОМ
+            {t('ТВОЙ КОЛЛЕДЖ РЯДОМ')}
           </p>
           <nav
             className="mt-4 flex gap-1 overflow-x-auto md:mt-0 md:grid md:gap-2"
-            aria-label="Основное меню"
+            aria-label={t('Основное меню')}
           >
             {navigation.map((item) => (
               <NavLink
@@ -61,13 +64,13 @@ export function PortalLayout() {
                 <span className="hidden w-6 text-xl md:inline" aria-hidden="true">
                   {item.icon}
                 </span>
-                {item.title}
+                {t(item.title)}
               </NavLink>
             ))}
           </nav>
           <div className="mt-auto hidden pt-16 text-[10px] text-accent md:block">
-            ● Начало большого проекта
-            <p className="mt-3 text-slate-400">Всё для учёбы — в одном месте.</p>
+            {t('● Начало большого проекта')}
+            <p className="mt-3 text-slate-400">{t('Всё для учёбы — в одном месте.')}</p>
           </div>
         </aside>
       )}
@@ -79,19 +82,22 @@ export function PortalLayout() {
         }
       >
         {!isAuth && (
-          <header className="flex h-20 items-center justify-between gap-4 text-[10px] text-slate-400 md:h-25">
+          <header className="flex min-h-20 flex-wrap items-center justify-between gap-3 py-4 text-[10px] text-slate-400 md:min-h-25">
             <span>
-              Студенческий портал /{' '}
-              <strong className="font-medium text-slate-600">{currentTitle}</strong>
+              {t('Студенческий портал /')}{' '}
+              <strong className="font-medium text-slate-600">{t(currentTitle)}</strong>
             </span>
             <div className="flex flex-wrap items-center justify-end gap-2 text-xs">
+              <LanguageSwitch />
               {!loading &&
                 (session ? (
                   <>
                     <span className="text-ink">
                       {session.first_name} {session.last_name}
                       <span className="ml-2 text-muted">
-                        {session.role === 'admin' ? 'Администратор' : session.group_name}
+                        {session.role === 'admin'
+                          ? t('Администратор')
+                          : session.group_name}
                       </span>
                     </span>
                     <button
@@ -99,7 +105,7 @@ export function PortalLayout() {
                       disabled={loggingOut}
                       className="rounded-lg border border-slate-200 px-4 py-2 text-ink disabled:opacity-50"
                     >
-                      {loggingOut ? 'Выходим…' : 'Выйти'}
+                      {loggingOut ? t('Выходим…') : t('Выйти')}
                     </button>
                   </>
                 ) : (
@@ -108,19 +114,19 @@ export function PortalLayout() {
                       to="/auth"
                       className="rounded-lg px-4 py-2 text-ink hover:bg-sky-50"
                     >
-                      Войти
+                      {t('Войти')}
                     </Link>
                     <Link
                       to="/auth?mode=register"
                       className="rounded-lg bg-ink px-4 py-2 text-white"
                     >
-                      Регистрация
+                      {t('Регистрация')}
                     </Link>
                   </>
                 ))}
               {logoutError && (
                 <p role="alert" className="text-red-700">
-                  {logoutError}
+                  {t(logoutError)}
                 </p>
               )}
             </div>
@@ -130,7 +136,7 @@ export function PortalLayout() {
         {!isAuth && (
           <footer className="flex justify-between gap-6 border-t border-slate-200 py-6 text-[9px] leading-5 text-slate-400">
             <span>INTC - Supporter</span>
-            <span>Создаём для студентов, вместе со студентами.</span>
+            <span>{t('Создаём для студентов, вместе со студентами.')}</span>
           </footer>
         )}
       </main>

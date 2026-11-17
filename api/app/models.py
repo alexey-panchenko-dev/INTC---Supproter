@@ -57,8 +57,17 @@ class Lesson(Base):
 
 class Application(Base):
     __tablename__ = "applications"
+    __table_args__ = (
+        CheckConstraint(
+            "pricing IN ('free', 'freemium', 'paid')", name="application_pricing"
+        ),
+    )
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(200))
     description: Mapped[str] = mapped_column(Text)
     subject: Mapped[str] = mapped_column(String(200))
     url: Mapped[str] = mapped_column(Text)
+    description_kk: Mapped[str] = mapped_column(Text, server_default="")
+    subject_kk: Mapped[str] = mapped_column(String(200), server_default="")
+    logo_url: Mapped[str] = mapped_column(Text, server_default="")
+    pricing: Mapped[str] = mapped_column(String(20), server_default="free")

@@ -1,3 +1,4 @@
+import { useI18n } from '@/shared/i18n'
 import { useEffect, useRef, useState } from 'react'
 import { EmptyState } from '@/shared/ui/empty-state'
 import { PageHeading } from '@/shared/ui/page-heading'
@@ -6,6 +7,8 @@ import { streamChat } from '../api/stream-chat'
 type Message = { role: 'user' | 'ai'; text: string }
 
 export function ChatPage() {
+  const { t, language } = useI18n()
+
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
@@ -37,10 +40,10 @@ export function ChatPage() {
       })
 
     try {
-      await streamChat(question, append, controller.signal)
+      await streamChat(question, append, controller.signal, language)
     } catch (reason) {
       if (!controller.signal.aborted) {
-        append(reason instanceof Error ? reason.message : 'Ошибка')
+        append(t(reason instanceof Error ? reason.message : 'Ошибка'))
       }
     } finally {
       setBusy(false)
@@ -49,11 +52,13 @@ export function ChatPage() {
 
   return (
     <section className="min-h-[65vh] py-8">
-      <PageHeading title="ИИ-помощник" />
+      <PageHeading title={t('ИИ-помощник')} />
       {messages.length === 0 ? (
         <EmptyState>
-          <h2 className="my-4 text-2xl font-bold text-ink">Знакомимся с колледжем</h2>
-          <p>Задайте вопрос о колледже, ответ будет найден в документах.</p>
+          <h2 className="my-4 text-2xl font-bold text-ink">
+            {t('Знакомимся с колледжем')}
+          </h2>
+          <p>{t('Задайте вопрос о колледже, ответ будет найден в документах.')}</p>
         </EmptyState>
       ) : (
         <div className="my-6 flex flex-col gap-3">
@@ -74,7 +79,8 @@ export function ChatPage() {
           className="flex-1 rounded border px-3 py-2"
           value={input}
           maxLength={4000}
-          placeholder="Ваш вопрос"
+          placeholder={t('Ваш вопрос')}
+          aria-label={t('Ваш вопрос')}
           onChange={(event) => setInput(event.target.value)}
           onKeyDown={(event) => event.key === 'Enter' && void send()}
         />
@@ -83,7 +89,7 @@ export function ChatPage() {
           disabled={busy}
           onClick={() => void send()}
         >
-          Отправить
+          {t('Отправить')}
         </button>
       </div>
     </section>
