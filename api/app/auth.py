@@ -69,7 +69,7 @@ def require_approved_student(user: Annotated[User, Depends(current_user)]) -> Us
 
 
 def require_admin(user: Annotated[User, Depends(require_approved_student)]) -> User:
-    if user is None or user.role != "admin":
+    if user.role != "admin":
         raise HTTPException(403, "Доступно только администратору")
     return user
 

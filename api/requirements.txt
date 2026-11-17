@@ -7,3 +7,4 @@ pydantic-settings==2.12.0
 email-validator==2.3.0
 openai==3.52.0
 pypdf==7.1.0
+python-multipart==0.0.34
