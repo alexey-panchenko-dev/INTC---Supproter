@@ -222,3 +222,105 @@ def test_admin_login_without_group_and_cross_origin_rejected(client):
     assert response.json()["role"] == "admin"
     assert "group_name" not in response.json()
     assert client.get("/api/v1/auth/me").json()["role"] == "admin"
+
+
+def login_schedule_admin(client):
+    del app.dependency_overrides[require_approved_student]
+    db = app.dependency_overrides[get_db]()
+    db.add(
+        User(
+            email="schedule-admin@example.com",
+            first_name="Админ",
+            last_name="Расписания",
+            role="admin",
+            status="approved",
+            password_hash=hash_password("Admin-test-123"),
+        )
+    )
+    db.commit()
+    client.post(
+        "/api/v1/auth/login",
+        json={
+            "email": "schedule-admin@example.com",
+            "password": "Admin-test-123",
+        },
+    )
+
+
+def schedule_payload():
+    return {
+        "lessons": [
+            {
+                "starts_at": "08:00",
+                "ends_at": "09:20",
+                "subject": " Математика ",
+                "teacher": "Преподаватель",
+                "room": "606",
+            }
+        ]
+    }
+
+
+def test_admin_publishes_replaces_and_clears_selected_day(client):
+    login_schedule_admin(client)
+    url = "/api/v1/schedule?group=ИС-1&day=2026-11-17"
+    response = client.put(url, json=schedule_payload())
+    assert response.status_code == 200
+    assert [row["subject"] for row in client.get(url).json()] == ["Математика"]
+    assert (
+        client.get("/api/v1/schedule?group=ИС-2&day=2026-11-17").json()[0]["subject"]
+        == "Другая группа"
+    )
+    assert (
+        client.get("/api/v1/schedule?group=ИС-1&day=2026-11-18").json()[0]["subject"]
+        == "Другой день"
+    )
+    assert len(client.put(url, json=schedule_payload()).json()) == 1
+    assert client.put(url, json={"lessons": []}).status_code == 200
+    assert client.get(url).json() == []
+
+
+def test_schedule_write_rejects_guest_student_blocked_admin_and_cross_origin(client):
+    del app.dependency_overrides[require_approved_student]
+    url = "/api/v1/schedule?group=ИС-1&day=2026-11-17"
+    assert client.put(url, json=schedule_payload()).status_code == 401
+    client.post("/api/v1/auth/register", json=student_payload())
+    client.post(
+        "/api/v1/auth/login",
+        json={
+            "email": "student@example.com",
+            "password": student_payload()["password"],
+        },
+    )
+    assert client.put(url, json=schedule_payload()).status_code == 403
+    app.dependency_overrides[require_approved_student] = lambda: None
+    login_schedule_admin(client)
+    assert (
+        client.put(
+            url, json=schedule_payload(), headers={"Origin": "https://evil.example"}
+        ).status_code
+        == 403
+    )
+    db = app.dependency_overrides[get_db]()
+    db.scalar(select(User).where(User.role == "admin")).status = "blocked"
+    db.commit()
+    assert client.put(url, json=schedule_payload()).status_code == 403
+
+
+def test_schedule_rejects_invalid_rows_without_erasing_published_data(client):
+    login_schedule_admin(client)
+    url = "/api/v1/schedule?group=ИС-1&day=2026-11-17"
+    for changes in (
+        {"starts_at": "25:00"},
+        {"ends_at": "07:00"},
+        {"subject": " "},
+        {"teacher": ""},
+        {"room": "x" * 51},
+    ):
+        payload = schedule_payload()
+        payload["lessons"][0].update(changes)
+        assert client.put(url, json=payload).status_code == 422
+    payload = schedule_payload()
+    payload["lessons"].append(dict(payload["lessons"][0]))
+    assert client.put(url, json=payload).status_code == 422
+    assert client.get(url).json()[0]["subject"] == "Python"

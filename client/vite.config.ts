@@ -14,6 +14,8 @@ export default defineConfig({
     host: '0.0.0.0',
     port: 5173,
     strictPort: true,
+    watch:
+      env.VITE_USE_POLLING === 'true' ? { usePolling: true, interval: 500 } : undefined,
     proxy: { '/api': { target: env.API_PROXY_TARGET || 'http://127.0.0.1:8000' } },
   },
 })

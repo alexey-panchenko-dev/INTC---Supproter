@@ -41,6 +41,7 @@ services:
     build: ./client
     environment:
       API_PROXY_TARGET: http://api:8000
+      VITE_USE_POLLING: "true"
     ports:
       - "127.0.0.1:${CLIENT_PORT:-5173}:5173"
     volumes:

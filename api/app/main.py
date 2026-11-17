@@ -2,15 +2,15 @@ from datetime import date
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Query
-from sqlalchemy import select, text
+from sqlalchemy import delete, select, text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from app.auth import require_approved_student
+from app.auth import require_admin, require_approved_student, require_same_origin
 from app.auth import router as auth_router
 from app.db import get_db
 from app.models import Application, Document, Lesson
-from app.schemas import ApplicationOut, ChatRequest, DocumentOut, LessonOut
+from app.schemas import ApplicationOut, ChatRequest, DocumentOut, LessonOut, ScheduleInput
 
 app = FastAPI(title="INTC - Supporter API", version="0.1.0")
 router = APIRouter(prefix="/api/v1")
@@ -42,6 +42,32 @@ def schedule(
         .order_by(Lesson.starts_at)
         .limit(100)
     ).all()
+
+
+@router.put(
+    "/schedule",
+    response_model=list[LessonOut],
+    dependencies=[Depends(require_admin), Depends(require_same_origin)],
+)
+def save_schedule(
+    payload: ScheduleInput,
+    db: DB,
+    group: Annotated[str, Query(min_length=1, max_length=50)],
+    day: date,
+):
+    group = group.strip()
+    if not group:
+        raise HTTPException(422, "Укажите группу")
+    db.execute(delete(Lesson).where(Lesson.group_name == group, Lesson.date == day))
+    lessons = [
+        Lesson(group_name=group, date=day, **item.model_dump())
+        for item in sorted(payload.lessons, key=lambda lesson: lesson.starts_at)
+    ]
+    db.add_all(lessons)
+    db.commit()
+    for lesson in lessons:
+        db.refresh(lesson)
+    return lessons
 
 
 @protected.get("/applications", response_model=list[ApplicationOut])

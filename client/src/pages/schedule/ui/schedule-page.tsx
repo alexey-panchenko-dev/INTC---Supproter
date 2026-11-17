@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import type { Lesson } from '@/entities/lesson'
+import { useSession } from '@/entities/session'
+import { ScheduleEditor } from '@/features/edit-schedule'
 import { useApiQuery } from '@/shared/api/use-api-query'
 import { PageHeading } from '@/shared/ui/page-heading'
 import { QueryState } from '@/shared/ui/query-state'
@@ -10,13 +12,17 @@ function today() {
 }
 
 export function SchedulePage() {
-  const [group, setGroup] = useState('')
+  const session = useSession()
+  const [group, setGroup] = useState(session?.group_name ?? '')
   const [day, setDay] = useState(today)
+  const [editing, setEditing] = useState(false)
+  const [revision, setRevision] = useState(0)
+  const [success, setSuccess] = useState('')
   const path =
     group.trim() && day
       ? `schedule?group=${encodeURIComponent(group.trim())}&day=${day}`
       : null
-  const { data, loading, error } = useApiQuery<Lesson[]>(path)
+  const { data, loading, error } = useApiQuery<Lesson[]>(path, revision)
 
   return (
     <section className="min-h-[65vh] py-8">
@@ -32,7 +38,11 @@ export function SchedulePage() {
             placeholder="Например, ИС-23-1"
             maxLength={50}
             value={group}
-            onChange={(event) => setGroup(event.target.value)}
+            disabled={editing}
+            onChange={(event) => {
+              setGroup(event.target.value)
+              setSuccess('')
+            }}
           />
         </label>
         <label className="grid gap-2 text-xs">
@@ -41,10 +51,47 @@ export function SchedulePage() {
             className="rounded-lg border border-slate-200 bg-white p-3"
             type="date"
             value={day}
-            onChange={(event) => setDay(event.target.value)}
+            disabled={editing}
+            onChange={(event) => {
+              setDay(event.target.value)
+              setSuccess('')
+            }}
           />
         </label>
       </div>
+      {success && (
+        <p role="status" className="mb-5 text-sm text-emerald-700">
+          {success}
+        </p>
+      )}
+      {session?.role === 'admin' &&
+        path &&
+        data &&
+        !loading &&
+        !error &&
+        (editing ? (
+          <ScheduleEditor
+            lessons={data}
+            path={path}
+            onCancel={() => setEditing(false)}
+            onPublished={() => {
+              setEditing(false)
+              setRevision((value) => value + 1)
+              setSuccess('Расписание опубликовано.')
+            }}
+          />
+        ) : (
+          <button
+            type="button"
+            onClick={() => {
+              setSuccess('')
+              setEditing(true)
+            }}
+            className="mb-6 min-h-11 rounded-lg bg-accent px-5 text-sm text-white"
+          >
+            Заполнить / изменить расписание дня
+          </button>
+        ))}
       <QueryState
         loading={loading}
         error={error}
