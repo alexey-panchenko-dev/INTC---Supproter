@@ -11,11 +11,17 @@ export async function apiRequest<T>(path: string, options: RequestInit = {}): Pr
   if (!(options.body instanceof FormData) && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json')
   }
-  const response = await fetch(`/api/v1/${path}`, {
-    ...options,
-    credentials: 'same-origin',
-    headers,
-  })
+  let response: Response
+  try {
+    response = await fetch(`/api/v1/${path}`, {
+      ...options,
+      credentials: 'same-origin',
+      headers,
+    })
+  } catch (reason) {
+    if (options.signal?.aborted) throw reason
+    throw new ApiError('Не удалось связаться с сервером.', 0)
+  }
   if (!response.ok) {
     const payload = await response.json().catch(() => null)
     const message =

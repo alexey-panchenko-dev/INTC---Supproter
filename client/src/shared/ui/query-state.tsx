@@ -1,3 +1,4 @@
+import { useI18n } from '@/shared/i18n'
 import type { ReactNode } from 'react'
 import { EmptyState } from './empty-state'
 
@@ -16,13 +17,15 @@ export function QueryState({
   emptyMessage,
   children,
 }: QueryStateProps) {
-  if (loading) return <p role="status">Загружаем…</p>
+  const { t } = useI18n()
+
+  if (loading) return <p role="status">{t('Загружаем…')}</p>
   if (error)
     return (
       <p role="alert" className="rounded-xl bg-red-50 p-5 text-red-800">
-        {error}
+        {t(error)}
       </p>
     )
   if (empty) return <EmptyState>{emptyMessage}</EmptyState>
-  return <div className="grid gap-3">{children}</div>
+  return <div className="grid min-w-0 grid-cols-1 gap-3">{children}</div>
 }

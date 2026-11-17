@@ -22,13 +22,13 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, defer
 
 from app.ai_chat import ai_router
+from app.applications import router as applications_router
 from app.auth import require_admin, require_approved_student, require_same_origin
 from app.auth import router as auth_router
 from app.db import get_db
 from app.document_parser import summarize_pdf_data
 from app.ingest_documents import ingest_documents
 from app.models import (
-    Application,
     CollegeContest,
     CollegeSection,
     CollegeSectionItem,
@@ -38,7 +38,6 @@ from app.models import (
     User,
 )
 from app.schemas import (
-    ApplicationOut,
     CollegeSectionCreate,
     CollegeSectionItemCreate,
     CollegeSectionItemOut,
@@ -469,12 +468,8 @@ def save_schedule(
     return lessons
 
 
-@protected.get("/applications", response_model=list[ApplicationOut])
-def applications(db: DB):
-    return db.scalars(select(Application).order_by(Application.name).limit(200)).all()
-
-
 app.include_router(router)
+app.include_router(applications_router)
 app.include_router(auth_router)
 app.include_router(protected)
 app.include_router(ai_router)

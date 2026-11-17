@@ -1,3 +1,4 @@
+import { useI18n } from '@/shared/i18n'
 import { useState, type FormEvent } from 'react'
 import type { Lesson } from '@/entities/lesson'
 import { apiRequest } from '@/shared/api/client'
@@ -34,6 +35,8 @@ export function ScheduleEditor({
   onPublished: () => void
   onCancel: () => void
 }) {
+  const { t } = useI18n()
+
   const [rows, setRows] = useState<Draft[]>(() =>
     lessons.length
       ? lessons.map((lesson) => ({ ...lesson, key: crypto.randomUUID() }))
@@ -85,10 +88,11 @@ export function ScheduleEditor({
       onSubmit={publish}
       className="mb-8 rounded-xl border border-slate-200 bg-white p-5"
     >
-      <h2 className="font-bold">Ручное заполнение расписания</h2>
+      <h2 className="font-bold">{t('Ручное заполнение расписания')}</h2>
       <p className="mt-2 mb-5 text-sm text-muted">
-        Публикация заменит расписание выбранной группы на выбранную дату. Чтобы оставить
-        день без занятий, удалите все строки и опубликуйте.
+        {t(
+          'Публикация заменит расписание выбранной группы на выбранную дату. Чтобы оставить день без занятий, удалите все строки и опубликуйте.',
+        )}
       </p>
       <fieldset disabled={busy}>
         <div className="overflow-x-auto">
@@ -97,11 +101,11 @@ export function ScheduleEditor({
               <tr>
                 {fields.map((field) => (
                   <th key={field.name} scope="col" className="p-2 font-medium">
-                    {field.label}
+                    {t(field.label)}
                   </th>
                 ))}
                 <th scope="col" className="p-2">
-                  Действие
+                  {t('Действие')}
                 </th>
               </tr>
             </thead>
@@ -111,7 +115,7 @@ export function ScheduleEditor({
                   {fields.map((field) => (
                     <td key={field.name} className="p-2">
                       <input
-                        aria-label={`${field.label}, строка ${index + 1}`}
+                        aria-label={`${t(field.label)}, ${t('строка')} ${index + 1}`}
                         type={field.type}
                         required
                         maxLength={field.max}
@@ -132,7 +136,7 @@ export function ScheduleEditor({
                   <td className="p-2">
                     <button
                       type="button"
-                      aria-label={`Удалить строку ${index + 1}`}
+                      aria-label={`${t('Удалить строку')} ${index + 1}`}
                       onClick={() =>
                         setRows((previous) =>
                           previous.filter((item) => item.key !== row.key),
@@ -140,7 +144,7 @@ export function ScheduleEditor({
                       }
                       className="min-h-11 px-3 text-red-700"
                     >
-                      Удалить
+                      {t('Удалить')}
                     </button>
                   </td>
                 </tr>
@@ -148,10 +152,10 @@ export function ScheduleEditor({
             </tbody>
           </table>
         </div>
-        {rows.length === 0 && <p className="py-4 text-sm">Занятий нет.</p>}
+        {rows.length === 0 && <p className="py-4 text-sm">{t('Занятий нет.')}</p>}
         {error && (
           <p role="alert" className="mt-4 text-sm text-red-700">
-            {error}
+            {t(error)}
           </p>
         )}
         <div className="mt-5 flex flex-wrap gap-3">
@@ -161,16 +165,16 @@ export function ScheduleEditor({
             onClick={() => setRows((previous) => [...previous, emptyRow()])}
             className="min-h-11 rounded-lg border border-slate-200 px-4 text-sm"
           >
-            Добавить пару
+            {t('Добавить пару')}
           </button>
           <button
             type="submit"
             className="min-h-11 rounded-lg bg-accent px-4 text-sm text-white"
           >
-            {busy ? 'Публикация…' : 'Опубликовать расписание дня'}
+            {busy ? t('Публикация…') : t('Опубликовать расписание дня')}
           </button>
           <button type="button" onClick={onCancel} className="min-h-11 px-4 text-sm">
-            Отмена
+            {t('Отмена')}
           </button>
         </div>
       </fieldset>

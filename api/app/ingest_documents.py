@@ -29,9 +29,7 @@ def ingest_documents() -> None:
         for sort_order, (filename, title) in enumerate(DOCUMENTS, start=1):
             path = DOCUMENT_DIR / filename
             pdf_data, description = parse_pdf(path)
-            document = session.scalar(
-                select(Document).where(Document.title == title)
-            )
+            document = session.scalar(select(Document).where(Document.title == title))
             if document is None:
                 document = Document(title=title, category=CATEGORY, url="")
                 session.add(document)

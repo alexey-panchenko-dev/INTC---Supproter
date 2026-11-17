@@ -15,6 +15,8 @@ from app.models import AuthSession, Lesson, User
 
 @pytest.fixture
 def client(monkeypatch):
+    # Startup imports bundled documents in production; unit tests use only fixture DBs.
+    monkeypatch.setattr("app.main.ingest_documents", lambda: None)
     from app.ai_chat import ai_settings
 
     monkeypatch.setattr(ai_settings, "api_key", "")
@@ -337,7 +339,7 @@ def test_chat_stream_route_uses_knowledge_and_returns_chunks(client, monkeypatch
         ai_chat, "load_knowledge", lambda db: "Колледж находится в Алматы."
     )
 
-    def answer(prompt, question):
+    def answer(prompt, question, language="ru"):
         assert "Колледж находится в Алматы." in prompt
         assert question == "Где колледж?"
         yield "В "
@@ -387,3 +389,199 @@ def test_chat_stream_handles_provider_error(monkeypatch):
 
     monkeypatch.setattr(ai_chat, "get_client", broken_client)
     assert "Ошибка ИИ-сервиса" in "".join(ai_chat.stream_answer("Контекст", "Вопрос"))
+
+
+def application_payload(**overrides):
+    return {
+        "name": "Example IDE",
+        "description": "Редактор кода",
+        "description_kk": "Код редакторы",
+        "url": "https://example.com/download",
+        "logo_url": "/logos/vscode.png",
+        "pricing": "freemium",
+        **overrides,
+    }
+
+
+def test_application_admin_crud_persists_both_languages(client):
+    login_schedule_admin(client)
+    response = client.post("/api/v1/applications", json=application_payload())
+    assert response.status_code == 201
+    item = response.json()
+    url = f"/api/v1/applications/{item['id']}"
+    assert item["description_kk"] == "Код редакторы"
+    assert "subject" not in item and "subject_kk" not in item
+    assert item["pricing"] == "freemium"
+    response = client.put(url, json=application_payload(name="Updated", pricing="paid"))
+    assert response.status_code == 200
+    assert client.get("/api/v1/applications").json()[0]["name"] == "Updated"
+    assert (
+        client.get("/api/v1/applications").json()[0]["description_kk"] == "Код редакторы"
+    )
+    assert client.delete(url).status_code == 204
+    assert client.get("/api/v1/applications").json() == []
+    assert client.put(url, json=application_payload()).status_code == 404
+    assert client.delete(url).status_code == 404
+
+
+def test_application_write_protection_for_every_mutation(client):
+    del app.dependency_overrides[require_approved_student]
+
+    def writes(status, headers=None):
+        assert (
+            client.post(
+                "/api/v1/applications", json=application_payload(), headers=headers
+            ).status_code
+            == status
+        )
+        assert (
+            client.put(
+                "/api/v1/applications/1", json=application_payload(), headers=headers
+            ).status_code
+            == status
+        )
+        assert (
+            client.delete("/api/v1/applications/1", headers=headers).status_code == status
+        )
+
+    writes(401)
+    client.post("/api/v1/auth/register", json=student_payload())
+    client.post(
+        "/api/v1/auth/login",
+        json={"email": "student@example.com", "password": student_payload()["password"]},
+    )
+    assert client.get("/api/v1/applications").status_code == 200
+    writes(403)
+    app.dependency_overrides[require_approved_student] = lambda: None
+    login_schedule_admin(client)
+    writes(403, {"Origin": "https://evil.example"})
+    db = app.dependency_overrides[get_db]()
+    db.scalar(select(User).where(User.role == "admin")).status = "blocked"
+    db.commit()
+    writes(403)
+
+
+@pytest.mark.parametrize(
+    "changes",
+    [
+        {"name": " "},
+        {"description_kk": ""},
+        {"subject_kk": " "},
+        {"url": "javascript:alert(1)"},
+        {"url": "https://user:pass@example.com"},
+        {"logo_url": "data:image/svg+xml,evil"},
+        {"logo_url": "//example.com/logo.png"},
+        {"logo_url": "/logos/../secret"},
+        {"pricing": "unknown"},
+        {"name": "x" * 201},
+    ],
+)
+def test_application_validation_keeps_saved_card(client, changes):
+    login_schedule_admin(client)
+    item = client.post("/api/v1/applications", json=application_payload()).json()
+    url = f"/api/v1/applications/{item['id']}"
+    assert (
+        client.post(
+            "/api/v1/applications", json=application_payload(**changes)
+        ).status_code
+        == 422
+    )
+    assert client.put(url, json=application_payload(**changes)).status_code == 422
+    saved = client.get("/api/v1/applications").json()
+    assert len(saved) == 1 and saved[0]["name"] == "Example IDE"
+
+
+def test_chat_kazakh_language_and_fallback(client, monkeypatch):
+    from app import ai_chat
+
+    monkeypatch.setattr(ai_chat.ai_settings, "api_key", "test-only")
+    monkeypatch.setattr(ai_chat, "load_knowledge", lambda db: "")
+    response = client.post(
+        "/api/v1/chat", json={"message": "Колледж қайда?", "language": "kk"}
+    )
+    assert response.text == "Әзірге бұл туралы ақпаратым жоқ."
+    monkeypatch.setattr(ai_chat, "load_knowledge", lambda db: "Алматы")
+
+    def answer(prompt, question, language):
+        assert "тек қазақ тілінде" in prompt
+        assert language == "kk"
+        yield "Алматыда."
+
+    monkeypatch.setattr(ai_chat, "stream_answer", answer)
+    assert (
+        client.post(
+            "/api/v1/chat", json={"message": "Колледж қайда?", "language": "kk"}
+        ).text
+        == "Алматыда."
+    )
+    assert (
+        client.post(
+            "/api/v1/chat", json={"message": "Question", "language": "invalid"}
+        ).status_code
+        == 422
+    )
+
+
+def test_master_document_upload_and_college_sections_survive_merge(client):
+    from pathlib import Path
+
+    login_schedule_admin(client)
+    pdf_path = next((Path(__file__).parents[1] / "app" / "document_files").glob("*.pdf"))
+    pdf = pdf_path.read_bytes()
+    response = client.post(
+        "/api/v1/documents",
+        data={"title": "Merge PDF check"},
+        files={"file": ("check.pdf", pdf, "application/pdf")},
+    )
+    assert response.status_code == 201
+    document = response.json()
+    assert document["description"]
+    assert client.get(document["url"]).content == pdf
+    assert client.get("/api/v1/applications").status_code == 200
+    section = client.post(
+        "/api/v1/college-sections",
+        json={"title": "Test section", "description": "Preserve master content"},
+    )
+    assert section.status_code == 201
+    slug = section.json()["slug"]
+    response = client.post(
+        f"/api/v1/college-sections/{slug}/items",
+        json={"title": "Test item", "summary": "Test summary", "content": "Details"},
+    )
+    assert response.status_code == 201
+    assert (
+        client.get(f"/api/v1/college-sections/{slug}/items").json()[0]["title"]
+        == "Test item"
+    )
+    assert client.delete(f"/api/v1/documents/{document['id']}").status_code == 204
+    response = client.post(
+        "/api/v1/contests",
+        json={
+            "title": "Merge contest",
+            "description": "Contest integration check",
+            "dates": "December 2026",
+            "signup_deadline": "2026-12-20",
+            "format": "Online",
+            "eligibility": "All students",
+            "curator": "College",
+            "details": ["Submit a project"],
+        },
+    )
+    assert response.status_code == 201
+    contest = response.json()
+    response = client.post(
+        "/api/v1/contest-signups",
+        json={
+            "contest_id": contest["slug"],
+            "contest_title": contest["title"],
+            "full_name": "Test Student",
+            "group_name": "TEST-1",
+            "course": "2",
+            "contact": "test@example.com",
+            "is_team": False,
+            "consent": True,
+        },
+    )
+    assert response.status_code == 201
+    assert client.delete(f"/api/v1/contests/{contest['slug']}").status_code == 204
+    assert client.get("/api/v1/contests").json() == []

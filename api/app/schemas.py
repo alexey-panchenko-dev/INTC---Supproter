@@ -6,6 +6,7 @@ from pydantic import (
     ConfigDict,
     EmailStr,
     Field,
+    HttpUrl,
     field_validator,
     model_validator,
 )
@@ -237,13 +238,41 @@ class ScheduleInput(BaseModel):
         return self
 
 
+class ApplicationInput(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    name: str = Field(min_length=1, max_length=200)
+    description: str = Field(min_length=1, max_length=2000)
+    description_kk: str = Field(min_length=1, max_length=2000)
+    url: str = Field(min_length=1, max_length=2000)
+    logo_url: str = Field(min_length=1, max_length=2000)
+    pricing: Literal["free", "freemium", "paid"]
+
+    @field_validator("url")
+    @classmethod
+    def validate_url(cls, value):
+        parsed = HttpUrl(value)
+        if parsed.username or parsed.password:
+            raise ValueError("URL credentials are not allowed")
+        return str(parsed)
+
+    @field_validator("logo_url")
+    @classmethod
+    def validate_logo(cls, value):
+        if value.startswith("/logos/") and value.count("/") == 2 and ".." not in value:
+            return value
+        return cls.validate_url(value)
+
+
 class ApplicationOut(ORMModel):
     id: int
     name: str
     description: str
-    subject: str
     url: str
+    description_kk: str
+    logo_url: str
+    pricing: Literal["free", "freemium", "paid"]
 
 
 class ChatRequest(BaseModel):
     message: str = Field(min_length=1, max_length=4000)
+    language: Literal["ru", "kk"] = "ru"

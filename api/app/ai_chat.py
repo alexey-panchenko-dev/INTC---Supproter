@@ -108,7 +108,7 @@ def load_knowledge(db: Session) -> str:
     return "\n\n".join(parts)
 
 
-def stream_answer(system_prompt: str, question: str):
+def stream_answer(system_prompt: str, question: str, language: str = "ru"):
     try:
         stream = get_client().chat.completions.create(
             model=ai_settings.model,
@@ -125,7 +125,11 @@ def stream_answer(system_prompt: str, question: str):
                 yield chunk.choices[0].delta.content
     except Exception:
         logging.exception("AI request failed")
-        yield "Ошибка ИИ-сервиса. Попробуйте позже."
+        yield (
+            "ЖИ қызметінде қате пайда болды. Кейінірек қайталап көріңіз."
+            if language == "kk"
+            else "Ошибка ИИ-сервиса. Попробуйте позже."
+        )
 
 
 @ai_router.post("/chat", dependencies=[Depends(require_same_origin)])
@@ -134,8 +138,14 @@ def chat(payload: ChatRequest, db: Session = Depends(get_db)):
         raise HTTPException(503, "ИИ не настроен")
     knowledge = load_knowledge(db)
     if not knowledge:
-        return StreamingResponse(iter([NO_DATA]), media_type="text/plain; charset=utf-8")
+        no_data = (
+            "Әзірге бұл туралы ақпаратым жоқ." if payload.language == "kk" else NO_DATA
+        )
+        return StreamingResponse(iter([no_data]), media_type="text/plain; charset=utf-8")
+    prompt = PROMPT.format(context=knowledge)
+    if payload.language == "kk":
+        prompt += '\nЖауапты тек қазақ тілінде бер. Сұрақ колледж туралы болмаса: "Мен тек колледж туралы сұрақтарға жауап беремін." Ақпарат жоқ болса: "Әзірге бұл туралы ақпаратым жоқ."'
     return StreamingResponse(
-        stream_answer(PROMPT.format(context=knowledge), payload.message),
+        stream_answer(prompt, payload.message, payload.language),
         media_type="text/plain; charset=utf-8",
     )

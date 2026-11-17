@@ -1,13 +1,19 @@
+import type { Language } from '@/shared/i18n'
+
 export async function streamChat(
   message: string,
   onChunk: (chunk: string) => void,
   signal: AbortSignal,
+  language: Language = 'ru',
 ): Promise<void> {
   const response = await fetch('/api/v1/chat', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message }),
+    body: JSON.stringify({ message, language }),
     signal,
+  }).catch((reason: unknown) => {
+    if (signal.aborted) throw reason
+    throw new Error('ИИ-помощник сейчас недоступен.')
   })
 
   if (response.status === 401) {

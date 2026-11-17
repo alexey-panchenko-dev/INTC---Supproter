@@ -1,3 +1,4 @@
+import { useI18n, type Language } from '@/shared/i18n'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import {
@@ -14,6 +15,32 @@ import { useApiQuery } from '@/shared/api/use-api-query'
 function isDeadlinePassed(deadline: string): boolean {
   const [year, month, day] = deadline.split('-').map(Number)
   return new Date(year, month - 1, day, 23, 59, 59).getTime() < Date.now()
+}
+
+function formatDeadline(deadline: string, language: Language): string {
+  const [year, month, day] = deadline.split('-').map(Number)
+  if (language === 'kk') {
+    const months = [
+      'қаңтар',
+      'ақпан',
+      'наурыз',
+      'сәуір',
+      'мамыр',
+      'маусым',
+      'шілде',
+      'тамыз',
+      'қыркүйек',
+      'қазан',
+      'қараша',
+      'желтоқсан',
+    ]
+    return `${year} жылғы ${day} ${months[month - 1]}`
+  }
+  return new Intl.DateTimeFormat('ru-RU', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  }).format(new Date(year, month - 1, day))
 }
 
 function fromContestRecord(record: ContestRecord): Contest {
@@ -45,6 +72,8 @@ function ContestPhoto({
   contest: Contest
   detailed?: boolean
 }) {
+  const { t } = useI18n()
+
   const hasImage = Boolean(contest.photoFilename)
 
   return (
@@ -53,7 +82,7 @@ function ContestPhoto({
     >
       {hasImage ? (
         <img
-          alt={contest.photoAlt ?? `Фото: ${contest.title}`}
+          alt={contest.photoAlt ?? `${t('Фото:')} ${contest.title}`}
           className={
             detailed
               ? 'max-h-[28rem] max-w-full object-contain'
@@ -76,7 +105,7 @@ function ContestPhoto({
             <circle cx="8.5" cy="9" r="1.5" />
             <path strokeLinecap="round" strokeLinejoin="round" d="m21 15-5-5L5 20" />
           </svg>
-          <span>Фото конкурса пока не добавлено</span>
+          <span>{t('Фото конкурса пока не добавлено')}</span>
         </div>
       )}
       {hasImage && contest.photoSource && (
@@ -86,7 +115,7 @@ function ContestPhoto({
           rel="noreferrer"
           target="_blank"
         >
-          Фото: {contest.photoCredit ?? 'источник'}
+          {t('Фото:')} {contest.photoCredit ?? t('источник')}
         </a>
       )}
     </figure>
@@ -102,6 +131,8 @@ function AddContestDialog({
   onClose: () => void
   onSaved: (contest: ContestRecord, isNew: boolean) => void
 }) {
+  const { t } = useI18n()
+
   const [title, setTitle] = useState(initial?.title ?? '')
   const [description, setDescription] = useState(initial?.description ?? '')
   const [dates, setDates] = useState(initial?.dates ?? '')
@@ -137,10 +168,13 @@ function AddContestDialog({
     setSaving(true)
     setError('')
     try {
-      const contest = await apiRequest<ContestRecord>(initial ? `contests/${encodeURIComponent(initial.slug)}` : 'contests', {
-        method: initial ? 'PUT' : 'POST',
-        body: JSON.stringify(payload),
-      })
+      const contest = await apiRequest<ContestRecord>(
+        initial ? `contests/${encodeURIComponent(initial.slug)}` : 'contests',
+        {
+          method: initial ? 'PUT' : 'POST',
+          body: JSON.stringify(payload),
+        },
+      )
       onSaved(contest, !initial)
       onClose()
     } catch (reason) {
@@ -167,14 +201,14 @@ function AddContestDialog({
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-xs font-bold tracking-[0.14em] text-sky-800 uppercase">
-              Управление конкурсами
+              {t('Управление конкурсами')}{' '}
             </p>
             <h2 id="contest-create-title" className="mt-2 text-xl font-extrabold">
-              {initial ? 'Изменить конкурс' : 'Добавить конкурс'}
+              {initial ? t('Изменить конкурс') : t('Добавить конкурс')}
             </h2>
           </div>
           <button
-            aria-label="Закрыть"
+            aria-label={t('Закрыть')}
             className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-xl text-slate-500 hover:bg-slate-100"
             disabled={saving}
             onClick={onClose}
@@ -185,7 +219,7 @@ function AddContestDialog({
         </div>
         <div className="mt-5 grid gap-4 sm:grid-cols-2">
           <label className="text-sm font-semibold text-ink sm:col-span-2">
-            Название
+            {t('Название')}{' '}
             <input
               autoFocus
               className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 font-normal"
@@ -196,7 +230,7 @@ function AddContestDialog({
             />
           </label>
           <label className="text-sm font-semibold text-ink sm:col-span-2">
-            Краткое описание
+            {t('Краткое описание')}{' '}
             <textarea
               className="mt-2 min-h-20 w-full rounded-lg border border-slate-200 px-3 py-2 font-normal"
               maxLength={2000}
@@ -206,18 +240,18 @@ function AddContestDialog({
             />
           </label>
           <label className="text-sm font-semibold text-ink">
-            Даты проведения
+            {t('Даты проведения')}{' '}
             <input
               className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 font-normal"
               maxLength={250}
               onChange={(event) => setDates(event.target.value)}
-              placeholder="Например, 12–13 декабря 2026"
+              placeholder={t('Например, 12–13 декабря 2026')}
               required
               value={dates}
             />
           </label>
           <label className="text-sm font-semibold text-ink">
-            Запись до
+            {t('Запись до')}{' '}
             <input
               className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 font-normal"
               onChange={(event) => setSignupDeadline(event.target.value)}
@@ -227,7 +261,7 @@ function AddContestDialog({
             />
           </label>
           <label className="text-sm font-semibold text-ink">
-            Формат
+            {t('Формат')}{' '}
             <input
               className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 font-normal"
               maxLength={250}
@@ -237,7 +271,7 @@ function AddContestDialog({
             />
           </label>
           <label className="text-sm font-semibold text-ink">
-            Кто может участвовать
+            {t('Кто может участвовать')}{' '}
             <input
               className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 font-normal"
               onChange={(event) => setEligibility(event.target.value)}
@@ -246,7 +280,7 @@ function AddContestDialog({
             />
           </label>
           <label className="text-sm font-semibold text-ink sm:col-span-2">
-            Куратор / организатор
+            {t('Куратор / организатор')}{' '}
             <input
               className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 font-normal"
               maxLength={200}
@@ -256,12 +290,12 @@ function AddContestDialog({
             />
           </label>
           <label className="text-sm font-semibold text-ink sm:col-span-2">
-            Подробности — по одному пункту на строку
+            {t('Подробности — по одному пункту на строку')}{' '}
             <textarea
               className="mt-2 min-h-24 w-full rounded-lg border border-slate-200 px-3 py-2 font-normal"
               maxLength={4000}
               onChange={(event) => setDetailsText(event.target.value)}
-              placeholder={'Требования к работе\nЭтапы конкурса\nЧто подготовить'}
+              placeholder={t('Требования к работе\nЭтапы конкурса\nЧто подготовить')}
               required
               value={detailsText}
             />
@@ -269,7 +303,7 @@ function AddContestDialog({
         </div>
         {error && (
           <p className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-800" role="alert">
-            {error}
+            {t(error)}
           </p>
         )}
         <div className="mt-6 flex justify-end gap-3">
@@ -279,14 +313,14 @@ function AddContestDialog({
             onClick={onClose}
             type="button"
           >
-            Отмена
+            {t('Отмена')}{' '}
           </button>
           <button
             className="rounded-lg bg-sky-700 px-4 py-2 text-sm font-bold text-white hover:bg-sky-800 disabled:opacity-50"
             disabled={saving}
             type="submit"
           >
-            {saving ? 'Сохраняем…' : 'Сохранить конкурс'}
+            {saving ? t('Сохраняем…') : t('Сохранить конкурс')}
           </button>
         </div>
       </form>
@@ -297,7 +331,7 @@ function AddContestDialog({
 type ContestRegistrationDialogProps = {
   contest: Contest
   onClose: () => void
-  onRegistered: (message: string) => void
+  onRegistered: (id: number) => void
 }
 
 function ContestRegistrationDialog({
@@ -305,6 +339,8 @@ function ContestRegistrationDialog({
   onClose,
   onRegistered,
 }: ContestRegistrationDialogProps) {
+  const { t } = useI18n()
+
   const { session } = useAuth()
   const [fullName, setFullName] = useState(
     session ? `${session.first_name} ${session.last_name}` : '',
@@ -342,7 +378,7 @@ function ContestRegistrationDialog({
         method: 'POST',
         body: JSON.stringify({ ...payload, consent }),
       })
-      onRegistered(`Заявка №${result.id} принята. Спасибо за регистрацию!`)
+      onRegistered(result.id)
       onClose()
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Не удалось отправить заявку.')
@@ -368,14 +404,14 @@ function ContestRegistrationDialog({
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-xs font-bold tracking-[0.14em] text-sky-800 uppercase">
-              Форма записи
+              {t('Форма записи')}{' '}
             </p>
             <h2 id="contest-registration-title" className="mt-2 text-xl font-extrabold">
-              {contest.title}
+              {t(contest.title)}
             </h2>
           </div>
           <button
-            aria-label="Закрыть форму"
+            aria-label={t('Закрыть форму')}
             className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-xl text-slate-500 hover:bg-slate-100"
             disabled={submitting}
             onClick={onClose}
@@ -387,7 +423,7 @@ function ContestRegistrationDialog({
 
         <div className="mt-5 grid gap-4 sm:grid-cols-2">
           <label className="text-sm font-semibold text-ink">
-            ФИО
+            {t('ФИО')}{' '}
             <input
               autoFocus
               className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 font-normal"
@@ -398,7 +434,7 @@ function ContestRegistrationDialog({
             />
           </label>
           <label className="text-sm font-semibold text-ink">
-            Группа
+            {t('Группа')}{' '}
             <input
               className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 font-normal"
               maxLength={50}
@@ -408,7 +444,7 @@ function ContestRegistrationDialog({
             />
           </label>
           <label className="text-sm font-semibold text-ink">
-            Курс
+            {t('Курс')}{' '}
             <input
               className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 font-normal"
               max="6"
@@ -420,18 +456,20 @@ function ContestRegistrationDialog({
             />
           </label>
           <label className="text-sm font-semibold text-ink">
-            Телефон / Telegram
+            {t('Телефон / Telegram')}{' '}
             <input
               className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 font-normal"
               maxLength={200}
               onChange={(event) => setContact(event.target.value)}
-              placeholder="+7... или @username"
+              placeholder={t('+7... или @username')}
               required
               value={contact}
             />
           </label>
           <fieldset className="sm:col-span-2">
-            <legend className="text-sm font-semibold text-ink">Командное участие</legend>
+            <legend className="text-sm font-semibold text-ink">
+              {t('Командное участие')}
+            </legend>
             <div className="mt-2 flex gap-3">
               {[false, true].map((teamChoice) => (
                 <label
@@ -444,7 +482,7 @@ function ContestRegistrationDialog({
                     onChange={() => setIsTeam(teamChoice)}
                     type="radio"
                   />
-                  {teamChoice ? 'Да' : 'Нет'}
+                  {teamChoice ? t('Да') : t('Нет')}
                 </label>
               ))}
             </div>
@@ -452,7 +490,7 @@ function ContestRegistrationDialog({
           {isTeam && (
             <>
               <label className="text-sm font-semibold text-ink">
-                Название команды
+                {t('Название команды')}{' '}
                 <input
                   className="mt-2 h-11 w-full rounded-lg border border-slate-200 px-3 font-normal"
                   maxLength={200}
@@ -462,12 +500,12 @@ function ContestRegistrationDialog({
                 />
               </label>
               <label className="text-sm font-semibold text-ink">
-                ФИО участников команды
+                {t('ФИО участников команды')}{' '}
                 <textarea
                   className="mt-2 min-h-11 w-full rounded-lg border border-slate-200 px-3 py-2 font-normal"
                   maxLength={2000}
                   onChange={(event) => setTeamMembers(event.target.value)}
-                  placeholder="Перечислите участников"
+                  placeholder={t('Перечислите участников')}
                   required
                   value={teamMembers}
                 />
@@ -475,7 +513,8 @@ function ContestRegistrationDialog({
             </>
           )}
           <label className="text-sm font-semibold text-ink sm:col-span-2">
-            Комментарий <span className="font-normal text-muted">(необязательно)</span>
+            {t('Комментарий')}{' '}
+            <span className="font-normal text-muted">{t('(необязательно)')}</span>
             <textarea
               className="mt-2 min-h-20 w-full rounded-lg border border-slate-200 px-3 py-2 font-normal"
               maxLength={2000}
@@ -492,15 +531,16 @@ function ContestRegistrationDialog({
               type="checkbox"
             />
             <span>
-              Согласен(на) на обработку персональных данных для организации участия в
-              конкурсе.
+              {t(
+                'Согласен(на) на обработку персональных данных для организации участия в конкурсе.',
+              )}{' '}
             </span>
           </label>
         </div>
 
         {error && (
           <p className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-800" role="alert">
-            {error}
+            {t(error)}
           </p>
         )}
         <div className="mt-6 flex justify-end gap-3">
@@ -510,14 +550,14 @@ function ContestRegistrationDialog({
             onClick={onClose}
             type="button"
           >
-            Отмена
+            {t('Отмена')}{' '}
           </button>
           <button
             className="rounded-lg bg-sky-700 px-4 py-2 text-sm font-bold text-white hover:bg-sky-800 disabled:opacity-50"
             disabled={submitting}
             type="submit"
           >
-            {submitting ? 'Отправляем…' : 'Отправить заявку'}
+            {submitting ? t('Отправляем…') : t('Отправить заявку')}
           </button>
         </div>
       </form>
@@ -532,6 +572,8 @@ export function ContestSection({
   onBack: () => void
   isAdmin: boolean
 }) {
+  const { t, language } = useI18n()
+
   const [searchParams, setSearchParams] = useSearchParams()
   const { data: savedContests } = useApiQuery<ContestRecord[]>('contests')
   const [localContestRecords, setLocalContestRecords] = useState<ContestRecord[]>([])
@@ -543,8 +585,14 @@ export function ContestSection({
   for (const record of savedContests ?? []) recordsBySlug.set(record.slug, record)
   for (const record of localContestRecords) recordsBySlug.set(record.slug, record)
   const availableContests = [
-    ...contests.map((contest) => recordsBySlug.has(contest.id) ? fromContestRecord(recordsBySlug.get(contest.id)!) : contest),
-    ...Array.from(recordsBySlug.values()).filter((record) => !contests.some((contest) => contest.id === record.slug)).map(fromContestRecord),
+    ...contests.map((contest) =>
+      recordsBySlug.has(contest.id)
+        ? fromContestRecord(recordsBySlug.get(contest.id)!)
+        : contest,
+    ),
+    ...Array.from(recordsBySlug.values())
+      .filter((record) => !contests.some((contest) => contest.id === record.slug))
+      .map(fromContestRecord),
   ].filter((contest) => !deletedContestSlugs.includes(contest.id))
 
   useEffect(() => {
@@ -552,25 +600,45 @@ export function ContestSection({
     seedStarted.current = true
     const existing = new Set(savedContests.map((record) => record.slug))
     const missing = contests.filter((contest) => !existing.has(contest.id))
-    void Promise.all(missing.map((contest) => apiRequest<ContestRecord>(`contests/seed/${encodeURIComponent(contest.id)}`, {
-      method: 'POST',
-      body: JSON.stringify({ title: contest.title, description: contest.description, dates: contest.dates, signup_deadline: contest.signupDeadline, format: contest.format, eligibility: contest.eligibility, curator: contest.curator, photo_filename: contest.photoFilename || null, details: contest.details }),
-    }))).then((records) => {
-      setLocalContestRecords((current) => [...current, ...records.filter((record) => record.is_active)])
-      setDeletedContestSlugs((current) => [...current, ...records.filter((record) => !record.is_active).map((record) => record.slug)])
+    void Promise.all(
+      missing.map((contest) =>
+        apiRequest<ContestRecord>(`contests/seed/${encodeURIComponent(contest.id)}`, {
+          method: 'POST',
+          body: JSON.stringify({
+            title: contest.title,
+            description: contest.description,
+            dates: contest.dates,
+            signup_deadline: contest.signupDeadline,
+            format: contest.format,
+            eligibility: contest.eligibility,
+            curator: contest.curator,
+            photo_filename: contest.photoFilename || null,
+            details: contest.details,
+          }),
+        }),
+      ),
+    ).then((records) => {
+      setLocalContestRecords((current) => [
+        ...current,
+        ...records.filter((record) => record.is_active),
+      ])
+      setDeletedContestSlugs((current) => [
+        ...current,
+        ...records.filter((record) => !record.is_active).map((record) => record.slug),
+      ])
     })
   }, [isAdmin, savedContests])
   const selectedContest = availableContests.find(
     (contest) => contest.id === searchParams.get('contest'),
   )
   const [registrationContest, setRegistrationContest] = useState<Contest | null>(null)
-  const [successMessage, setSuccessMessage] = useState('')
+  const [registeredId, setRegisteredId] = useState<number | null>(null)
   const addContestButton = isAdmin && (
     <button
-      aria-label="Добавить конкурс"
+      aria-label={t('Добавить конкурс')}
       className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-sky-700 text-white shadow-sm transition hover:bg-sky-800"
       onClick={() => setCreateOpen(true)}
-      title="Добавить конкурс"
+      title={t('Добавить конкурс')}
       type="button"
     >
       <svg
@@ -587,7 +655,7 @@ export function ContestSection({
   )
 
   function showContest(contestId: string) {
-    setSuccessMessage('')
+    setRegisteredId(null)
     setSearchParams({ section: 'contests', contest: contestId })
   }
 
@@ -597,15 +665,21 @@ export function ContestSection({
 
   async function deleteContest(contest: Contest) {
     if (!recordFor(contest)) return
-    if (!window.confirm(`Удалить конкурс «${contest.title}»?`)) return
-    await apiRequest<void>(`contests/${encodeURIComponent(contest.id)}`, { method: 'DELETE' })
+    if (!window.confirm(`${t('Удалить конкурс «')}${contest.title}${t('»?')}`)) return
+    await apiRequest<void>(`contests/${encodeURIComponent(contest.id)}`, {
+      method: 'DELETE',
+    })
     setDeletedContestSlugs((items) => [...items, contest.id])
     setLocalContestRecords((items) => items.filter((item) => item.slug !== contest.id))
     setSearchParams({ section: 'contests' })
   }
 
   function recordFor(contest: Contest) {
-    return localContestRecords.find((item) => item.slug === contest.id) ?? (savedContests ?? []).find((item) => item.slug === contest.id) ?? null
+    return (
+      localContestRecords.find((item) => item.slug === contest.id) ??
+      (savedContests ?? []).find((item) => item.slug === contest.id) ??
+      null
+    )
   }
 
   return (
@@ -615,7 +689,7 @@ export function ContestSection({
         onClick={selectedContest ? backToContestList : onBack}
         type="button"
       >
-        ← {selectedContest ? 'Все конкурсы' : 'Все разделы'}
+        ← {selectedContest ? t('Все конкурсы') : t('Все разделы')}
       </button>
 
       {!selectedContest ? (
@@ -623,27 +697,28 @@ export function ContestSection({
           <div className="mt-1 flex items-start justify-between gap-4 rounded-2xl border border-slate-100 bg-white p-5 shadow-sm md:p-7">
             <div>
               <p className="text-xs font-bold tracking-[0.14em] text-sky-800 uppercase">
-                Отдел конкурсов
+                {t('Отдел конкурсов')}{' '}
               </p>
               <h2 className="mt-2 text-2xl font-extrabold tracking-tight md:text-3xl">
-                IT конкурсы 2026. Запись участников
+                {t('IT конкурсы 2026. Запись участников')}{' '}
               </h2>
               <p className="mt-3 text-sm leading-6 text-muted">
-                Хочешь проявить себя? Выбери конкурс и запишись!
+                {t('Хочешь проявить себя? Выбери конкурс и запишись!')}{' '}
               </p>
               <p className="mt-3 text-sm text-muted">
-                По вопросам участия обращайтесь к куратору конкурса.
+                {t('По вопросам участия обращайтесь к куратору конкурса.')}{' '}
               </p>
             </div>
             {addContestButton}
           </div>
 
-          {successMessage && (
+          {registeredId !== null && (
             <p
               className="mt-5 rounded-xl bg-emerald-50 p-4 text-sm font-semibold text-emerald-900"
               role="status"
             >
-              {successMessage}
+              {t('Заявка №')}
+              {registeredId} {t('принята. Спасибо за регистрацию!')}
             </p>
           )}
 
@@ -656,7 +731,7 @@ export function ContestSection({
                   key={contest.id}
                 >
                   <button
-                    aria-label={`Открыть конкурс: ${contest.title}`}
+                    aria-label={`${t('Открыть конкурс:')} ${contest.title}`}
                     className="group flex w-full flex-1 flex-col text-left focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-sky-700"
                     onClick={() => showContest(contest.id)}
                     type="button"
@@ -664,23 +739,24 @@ export function ContestSection({
                     <ContestPhoto contest={contest} />
                     <div className="flex flex-1 flex-col p-5">
                       <h3 className="text-lg leading-snug font-extrabold text-ink group-hover:text-sky-800">
-                        {contest.title}
+                        {t(contest.title)}
                       </h3>
                       <p className="mt-2 line-clamp-3 text-sm leading-6 text-muted">
-                        {contest.description}
+                        {t(contest.description)}
                       </p>
                       <p className="mt-auto pt-4 text-xs font-semibold text-slate-600">
-                        Даты: {contest.dates}
+                        {t('Даты:')} {contest.dates}
                       </p>
                       <p className="mt-1 text-xs text-slate-500">
-                        Запись до: {contest.signupDeadlineLabel}
+                        {t('Запись до:')}{' '}
+                        {formatDeadline(contest.signupDeadline, language)}
                       </p>
                     </div>
                   </button>
                   <div className="flex flex-wrap gap-2 px-5 pb-5">
                     {closed ? (
                       <span className="rounded-lg bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-500">
-                        Запись закрыта
+                        {t('Запись закрыта')}{' '}
                       </span>
                     ) : (
                       <button
@@ -688,13 +764,30 @@ export function ContestSection({
                         onClick={() => setRegistrationContest(contest)}
                         type="button"
                       >
-                        Записаться
+                        {t('Записаться')}{' '}
                       </button>
                     )}
-                    {isAdmin && recordFor(contest) && <div className="ml-auto flex gap-2">
-                      <button className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-sky-800" onClick={() => { const record = recordFor(contest); if (record) setEditingContest(record) }} type="button">Изменить</button>
-                      <button className="rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-700" onClick={() => void deleteContest(contest)} type="button">Удалить</button>
-                    </div>}
+                    {isAdmin && recordFor(contest) && (
+                      <div className="ml-auto flex gap-2">
+                        <button
+                          className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-sky-800"
+                          onClick={() => {
+                            const record = recordFor(contest)
+                            if (record) setEditingContest(record)
+                          }}
+                          type="button"
+                        >
+                          {t('Изменить')}
+                        </button>
+                        <button
+                          className="rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-700"
+                          onClick={() => void deleteContest(contest)}
+                          type="button"
+                        >
+                          {t('Удалить')}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </article>
               )
@@ -703,12 +796,13 @@ export function ContestSection({
         </>
       ) : (
         <>
-          {successMessage && (
+          {registeredId !== null && (
             <p
               className="mt-5 rounded-xl bg-emerald-50 p-4 text-sm font-semibold text-emerald-900"
               role="status"
             >
-              {successMessage}
+              {t('Заявка №')}
+              {registeredId} {t('принята. Спасибо за регистрацию!')}
             </p>
           )}
           <article className="mt-5 overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
@@ -721,26 +815,51 @@ export function ContestSection({
                       {selectedContest.dates}
                     </p>
                     <h2 className="mt-2 text-2xl font-extrabold tracking-tight md:text-3xl">
-                      {selectedContest.title}
+                      {t(selectedContest.title)}
                     </h2>
                     <p className="mt-3 text-sm leading-6 text-muted">
-                      {selectedContest.description}
+                      {t(selectedContest.description)}
                     </p>
                   </div>
-                  {isAdmin && recordFor(selectedContest) ? <div className="flex gap-2"> <button className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-sky-800" onClick={() => { const record = recordFor(selectedContest); if (record) setEditingContest(record) }} type="button">Изменить</button><button className="rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-700" onClick={() => void deleteContest(selectedContest)} type="button">Удалить</button></div> : addContestButton}
+                  {isAdmin && recordFor(selectedContest) ? (
+                    <div className="flex gap-2">
+                      {' '}
+                      <button
+                        className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-sky-800"
+                        onClick={() => {
+                          const record = recordFor(selectedContest)
+                          if (record) setEditingContest(record)
+                        }}
+                        type="button"
+                      >
+                        {t('Изменить')}
+                      </button>
+                      <button
+                        className="rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-700"
+                        onClick={() => void deleteContest(selectedContest)}
+                        type="button"
+                      >
+                        {t('Удалить')}
+                      </button>
+                    </div>
+                  ) : (
+                    addContestButton
+                  )}
                 </div>
                 <div className="mt-5 grid gap-4 rounded-xl bg-slate-50 p-4 text-sm sm:grid-cols-2">
                   <p>
-                    <strong>Запись до:</strong> {selectedContest.signupDeadlineLabel}
+                    <strong>{t('Запись до:')}</strong>{' '}
+                    {formatDeadline(selectedContest.signupDeadline, language)}
                   </p>
                   <p>
-                    <strong>Формат:</strong> {selectedContest.format}
+                    <strong>{t('Формат:')}</strong> {selectedContest.format}
                   </p>
                   <p>
-                    <strong>Кто может участвовать:</strong> {selectedContest.eligibility}
+                    <strong>{t('Кто может участвовать:')}</strong>{' '}
+                    {selectedContest.eligibility}
                   </p>
                   <p>
-                    <strong>Куратор:</strong> {selectedContest.curator}
+                    <strong>{t('Куратор:')}</strong> {selectedContest.curator}
                   </p>
                 </div>
                 <ul className="mt-5 list-disc space-y-2 pl-5 text-sm leading-6 text-muted">
@@ -751,7 +870,7 @@ export function ContestSection({
                 <div className="mt-6">
                   {isDeadlinePassed(selectedContest.signupDeadline) ? (
                     <span className="rounded-lg bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-500">
-                      Запись закрыта
+                      {t('Запись закрыта')}{' '}
                     </span>
                   ) : (
                     <button
@@ -759,7 +878,7 @@ export function ContestSection({
                       onClick={() => setRegistrationContest(selectedContest)}
                       type="button"
                     >
-                      Записаться
+                      {t('Записаться')}{' '}
                     </button>
                   )}
                 </div>
@@ -773,14 +892,22 @@ export function ContestSection({
         <ContestRegistrationDialog
           contest={registrationContest}
           onClose={() => setRegistrationContest(null)}
-          onRegistered={setSuccessMessage}
+          onRegistered={setRegisteredId}
         />
       )}
       {(createOpen || editingContest) && (
         <AddContestDialog
           initial={editingContest}
-          onClose={() => { setCreateOpen(false); setEditingContest(null) }}
-          onSaved={(record) => setLocalContestRecords((current) => [...current.filter((item) => item.slug !== record.slug), record])}
+          onClose={() => {
+            setCreateOpen(false)
+            setEditingContest(null)
+          }}
+          onSaved={(record) =>
+            setLocalContestRecords((current) => [
+              ...current.filter((item) => item.slug !== record.slug),
+              record,
+            ])
+          }
         />
       )}
     </>
