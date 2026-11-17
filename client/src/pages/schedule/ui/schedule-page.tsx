@@ -19,56 +19,71 @@ export function SchedulePage() {
   const { data, loading, error } = useApiQuery<Lesson[]>(path)
 
   return (
-    <section className="min-h-[65vh] py-8">
+    <section className="min-h-[65vh]">
       <PageHeading
         title="Расписание"
-        description="Выбери группу и дату, чтобы увидеть свои пары."
+        description="Выбери группу и дату, чтобы увидеть пары и аудитории."
       />
-      <div className="mb-8 flex flex-col gap-5 sm:flex-row">
-        <label className="grid gap-2 text-xs">
+      <div className="portal-card mb-6 grid gap-4 p-4 sm:grid-cols-[minmax(220px,1fr)_minmax(200px,.8fr)] sm:p-5">
+        <label className="grid gap-2 text-sm font-semibold text-ink">
           Группа
           <input
-            className="rounded-lg border border-slate-200 bg-white p-3"
+            className="portal-field"
             placeholder="Например, ИС-23-1"
             maxLength={50}
             value={group}
             onChange={(event) => setGroup(event.target.value)}
           />
         </label>
-        <label className="grid gap-2 text-xs">
+        <label className="grid gap-2 text-sm font-semibold text-ink">
           Дата
           <input
-            className="rounded-lg border border-slate-200 bg-white p-3"
+            className="portal-field"
             type="date"
             value={day}
             onChange={(event) => setDay(event.target.value)}
           />
         </label>
       </div>
+
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <h2 className="text-base font-bold text-ink">Пары на выбранную дату</h2>
+        {day && <time className="text-sm text-muted" dateTime={day}>{new Date(`${day}T12:00:00`).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', weekday: 'long' })}</time>}
+      </div>
+
       <QueryState
         loading={loading}
         error={error}
         empty={!data?.length}
         emptyMessage={
           group.trim()
-            ? 'На выбранную дату пары ещё не добавлены.'
+            ? 'На выбранную дату расписание не загружено.'
             : 'Введи свою группу, чтобы посмотреть расписание.'
         }
       >
-        {data?.map((lesson) => (
-          <article
-            className="rounded-xl border border-slate-200 bg-white p-6"
-            key={lesson.id}
-          >
-            <p className="text-xs text-accent">
-              {lesson.starts_at} — {lesson.ends_at}
-            </p>
-            <h2 className="my-3 font-bold">{lesson.subject}</h2>
-            <p className="text-sm text-muted">
-              {lesson.teacher} · ауд. {lesson.room}
-            </p>
-          </article>
-        ))}
+        <div className="grid gap-3">
+          {data?.map((lesson, index) => (
+            <article
+              className="portal-card grid gap-3 p-4 sm:grid-cols-[110px_minmax(0,1fr)] sm:items-center sm:gap-5 sm:p-5"
+              key={lesson.id}
+            >
+              <div className="flex items-center gap-3 sm:block">
+                <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-sky-50 text-xs font-bold text-sky-800">
+                  {String(index + 1).padStart(2, '0')}
+                </span>
+                <p className="text-sm font-bold tabular-nums text-sky-800">
+                  {lesson.starts_at} <span className="font-normal text-slate-400">—</span> {lesson.ends_at}
+                </p>
+              </div>
+              <div className="min-w-0 border-t border-slate-100 pt-3 sm:border-t-0 sm:border-l sm:py-1 sm:pl-5">
+                <h3 className="text-base leading-6 font-bold text-ink">{lesson.subject}</h3>
+                <p className="mt-1 text-sm leading-5 text-muted">
+                  {lesson.teacher} <span className="mx-1.5 text-slate-300">·</span> аудитория {lesson.room}
+                </p>
+              </div>
+            </article>
+          ))}
+        </div>
       </QueryState>
     </section>
   )
