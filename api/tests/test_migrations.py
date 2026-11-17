@@ -59,7 +59,12 @@ def test_both_migration_histories_preserve_data(monkeypatch, source):
             for column in inspect(migration_engine).get_columns("documents")
         }
         with migration_engine.connect() as db:
-            assert db.scalar(text("SELECT version_num FROM alembic_version")) == "0009"
+            assert db.scalar(text("SELECT version_num FROM alembic_version")) == "0010"
+            lesson_columns = {
+                column["name"]
+                for column in inspect(migration_engine).get_columns("lessons")
+            }
+            assert {"note", "created_by_id"} <= lesson_columns
             assert (
                 db.scalar(text("SELECT count(*) FROM applications"))
                 == {

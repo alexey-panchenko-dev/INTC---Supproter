@@ -139,6 +139,10 @@ class Lesson(Base):
     subject: Mapped[str] = mapped_column(String(200))
     teacher: Mapped[str] = mapped_column(String(200))
     room: Mapped[str] = mapped_column(String(50))
+    note: Mapped[str | None] = mapped_column(String(200))
+    created_by_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL")
+    )
 
 
 class Application(Base):

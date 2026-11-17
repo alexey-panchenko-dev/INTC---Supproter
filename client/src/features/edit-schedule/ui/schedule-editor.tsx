@@ -21,6 +21,7 @@ function emptyRow(): Draft {
     subject: '',
     teacher: '',
     room: '',
+    note: null,
   }
 }
 
@@ -71,6 +72,7 @@ export function ScheduleEditor({
             subject: row.subject.trim(),
             teacher: row.teacher.trim(),
             room: row.room.trim(),
+            note: row.note,
           })),
         }),
       })
@@ -117,7 +119,7 @@ export function ScheduleEditor({
                       <input
                         aria-label={`${t(field.label)}, ${t('строка')} ${index + 1}`}
                         type={field.type}
-                        required
+                        required={field.name !== 'room'}
                         maxLength={field.max}
                         value={row[field.name]}
                         onChange={(event) =>

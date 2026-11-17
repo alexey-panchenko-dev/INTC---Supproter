@@ -285,7 +285,9 @@ def test_admin_publishes_replaces_and_clears_selected_day(client):
     assert client.get(url).json() == []
 
 
-def test_schedule_write_rejects_guest_student_blocked_admin_and_cross_origin(client):
+def test_schedule_write_rejects_guest_other_group_blocked_admin_and_cross_origin(
+    client,
+):
     del app.dependency_overrides[require_approved_student]
     url = "/api/v1/schedule?group=ИС-1&day=2026-11-17"
     assert client.put(url, json=schedule_payload()).status_code == 401
@@ -297,7 +299,15 @@ def test_schedule_write_rejects_guest_student_blocked_admin_and_cross_origin(cli
             "password": student_payload()["password"],
         },
     )
-    assert client.put(url, json=schedule_payload()).status_code == 403
+    other_group = "/api/v1/schedule?group=ИС-2&day=2026-11-17"
+    assert client.put(other_group, json=schedule_payload()).status_code == 403
+    # A student may publish for their own group (any spelling of the group name).
+    assert (
+        client.put(
+            "/api/v1/schedule?group=ис 1&day=2026-11-17", json=schedule_payload()
+        ).status_code
+        == 200
+    )
     app.dependency_overrides[require_approved_student] = lambda: None
     login_schedule_admin(client)
     assert (

@@ -27,6 +27,7 @@ from app.auth import require_admin, require_approved_student, require_same_origi
 from app.auth import router as auth_router
 from app.db import get_db
 from app.document_parser import summarize_pdf_data
+from app.groups import normalize_group
 from app.ingest_documents import ingest_documents
 from app.models import (
     CollegeContest,
@@ -37,6 +38,8 @@ from app.models import (
     Lesson,
     User,
 )
+from app.schedule_import import editable_group
+from app.schedule_import import router as schedule_import_router
 from app.schemas import (
     CollegeSectionCreate,
     CollegeSectionItemCreate,
@@ -436,7 +439,7 @@ def schedule(
 ):
     return db.scalars(
         select(Lesson)
-        .where(Lesson.group_name == group, Lesson.date == day)
+        .where(Lesson.group_name == normalize_group(group), Lesson.date == day)
         .order_by(Lesson.starts_at)
         .limit(100)
     ).all()
@@ -445,20 +448,19 @@ def schedule(
 @router.put(
     "/schedule",
     response_model=list[LessonOut],
-    dependencies=[Depends(require_admin), Depends(require_same_origin)],
+    dependencies=[Depends(require_same_origin)],
 )
 def save_schedule(
     payload: ScheduleInput,
     db: DB,
+    user: Annotated[User | None, Depends(require_approved_student)],
     group: Annotated[str, Query(min_length=1, max_length=50)],
     day: date,
 ):
-    group = group.strip()
-    if not group:
-        raise HTTPException(422, "Укажите группу")
+    group = editable_group(user, group)
     db.execute(delete(Lesson).where(Lesson.group_name == group, Lesson.date == day))
     lessons = [
-        Lesson(group_name=group, date=day, **item.model_dump())
+        Lesson(group_name=group, date=day, created_by_id=user.id, **item.model_dump())
         for item in sorted(payload.lessons, key=lambda lesson: lesson.starts_at)
     ]
     db.add_all(lessons)
@@ -471,5 +473,6 @@ def save_schedule(
 app.include_router(router)
 app.include_router(applications_router)
 app.include_router(auth_router)
+app.include_router(schedule_import_router)
 app.include_router(protected)
 app.include_router(ai_router)

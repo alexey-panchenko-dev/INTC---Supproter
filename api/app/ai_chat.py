@@ -22,7 +22,7 @@ from app.schemas import ChatRequest
 class AISettings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore", env_prefix="AI_")
     api_key: str = ""
-    base_url: str = "https://lanyiapi.com/v1"
+    base_url: str = "https://api.openai.com/v1"
     model: str = "gpt-6-astra"
     max_tokens: int = 400
 

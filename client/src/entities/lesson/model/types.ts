@@ -7,4 +7,5 @@ export type Lesson = {
   subject: string
   teacher: string
   room: string
+  note: string | null
 }

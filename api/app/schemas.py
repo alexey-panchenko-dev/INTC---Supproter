@@ -11,6 +11,8 @@ from pydantic import (
     model_validator,
 )
 
+from app.groups import normalize_group
+
 
 class ORMModel(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -37,6 +39,11 @@ class RegisterRequest(LoginRequest):
     @classmethod
     def trim_text(cls, value):
         return value.strip() if isinstance(value, str) else value
+
+    @field_validator("group_name")
+    @classmethod
+    def canonical_group(cls, value: str) -> str:
+        return normalize_group(value)
 
 
 class UserOut(ORMModel):
@@ -208,6 +215,7 @@ class LessonOut(ORMModel):
     subject: str
     teacher: str
     room: str
+    note: str | None = None
 
 
 class LessonInput(BaseModel):
@@ -216,7 +224,9 @@ class LessonInput(BaseModel):
     ends_at: str = Field(pattern=r"^([01]\d|2[0-3]):[0-5]\d$")
     subject: str = Field(min_length=1, max_length=200)
     teacher: str = Field(min_length=1, max_length=200)
-    room: str = Field(min_length=1, max_length=50)
+    # Some rows (e.g. «Кураторский час») have no room in the official schedule.
+    room: str = Field(default="", max_length=50)
+    note: str | None = Field(default=None, max_length=200)
 
     @model_validator(mode="after")
     def validate_time(self):
