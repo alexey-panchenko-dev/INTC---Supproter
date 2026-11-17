@@ -9,6 +9,8 @@ class Settings(BaseSettings):
     db_name: str = "intc_supporter"
     db_user: str = "intc"
     db_password: str = "intc_local_dev"
+    cookie_secure: bool = False
+    session_lifetime_seconds: int = 604800
 
     @property
     def database_url(self) -> URL:

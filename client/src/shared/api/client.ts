@@ -1,13 +1,31 @@
-export async function apiGet<T>(path: string, signal?: AbortSignal): Promise<T> {
-  const response = await fetch(`/api/v1/${path}`, { signal })
-
-  if (response.status === 401) {
-    throw new Error('Для доступа войдите в подтверждённый аккаунт.')
+export class ApiError extends Error {
+  status: number
+  constructor(message: string, status: number) {
+    super(message)
+    this.status = status
   }
+}
 
+export async function apiRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const response = await fetch(`/api/v1/${path}`, {
+    ...options,
+    credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json', ...options.headers },
+  })
   if (!response.ok) {
-    throw new Error('Не удалось загрузить данные. Проверьте подключение к серверу.')
+    const payload = await response.json().catch(() => null)
+    const message =
+      typeof payload?.detail === 'string'
+        ? payload.detail
+        : response.status === 422
+          ? 'Проверьте поля формы: почту, обязательные данные и длину пароля.'
+          : 'Не удалось выполнить запрос. Попробуйте ещё раз.'
+    throw new ApiError(message, response.status)
   }
-
+  if (response.status === 204) return undefined as T
   return response.json() as Promise<T>
+}
+
+export function apiGet<T>(path: string, signal?: AbortSignal): Promise<T> {
+  return apiRequest<T>(path, { signal })
 }

@@ -1,4 +1,5 @@
 import type { RouteObject } from 'react-router-dom'
+import { AuthPage } from '@/pages/auth'
 import { ApplicationsPage } from '@/pages/applications'
 import { ChatPage } from '@/pages/chat'
 import { DocumentsPage } from '@/pages/documents'
@@ -13,6 +14,7 @@ export const routeConfig: RouteObject[] = [
     path: '/',
     Component: PortalLayout,
     children: [
+      { path: 'auth', Component: AuthPage },
       { index: true, Component: HomePage },
       {
         path: 'schedule',

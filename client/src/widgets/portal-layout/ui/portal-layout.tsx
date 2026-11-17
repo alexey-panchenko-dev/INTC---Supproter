@@ -1,10 +1,27 @@
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
+import { useState } from 'react'
+import { useAuth } from '@/entities/session'
 import { navigation } from '@/shared/config/navigation'
 
 export function PortalLayout() {
+  const { session, loading, logout } = useAuth()
+  const [logoutError, setLogoutError] = useState('')
+  const [loggingOut, setLoggingOut] = useState(false)
+  async function handleLogout() {
+    setLoggingOut(true)
+    setLogoutError('')
+    try {
+      await logout()
+    } catch {
+      setLogoutError('Не удалось выйти. Попробуйте ещё раз.')
+    } finally {
+      setLoggingOut(false)
+    }
+  }
   const { pathname } = useLocation()
   const currentTitle =
-    navigation.find((item) => item.path === pathname)?.title ?? 'Страница'
+    navigation.find((item) => item.path === pathname)?.title ??
+    (pathname === '/auth' ? 'Вход и регистрация' : 'Страница')
 
   return (
     <div className="min-h-screen md:grid md:grid-cols-[220px_1fr] xl:grid-cols-[244px_1fr]">
@@ -51,9 +68,46 @@ export function PortalLayout() {
             Студенческий портал /{' '}
             <strong className="font-medium text-slate-600">{currentTitle}</strong>
           </span>
-          <span className="rounded-full border border-slate-200 px-3 py-2 whitespace-nowrap">
-            Версия 0.1
-          </span>
+          <div className="flex flex-wrap items-center justify-end gap-2 text-xs">
+            {!loading &&
+              (session ? (
+                <>
+                  <span className="text-ink">
+                    {session.first_name} {session.last_name}
+                    <span className="ml-2 text-muted">
+                      {session.role === 'admin' ? 'Администратор' : session.group_name}
+                    </span>
+                  </span>
+                  <button
+                    onClick={() => void handleLogout()}
+                    disabled={loggingOut}
+                    className="rounded-lg border border-slate-200 px-4 py-2 text-ink disabled:opacity-50"
+                  >
+                    {loggingOut ? 'Выходим…' : 'Выйти'}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Link
+                    to="/auth"
+                    className="rounded-lg px-4 py-2 text-ink hover:bg-sky-50"
+                  >
+                    Войти
+                  </Link>
+                  <Link
+                    to="/auth?mode=register"
+                    className="rounded-lg bg-ink px-4 py-2 text-white"
+                  >
+                    Регистрация
+                  </Link>
+                </>
+              ))}
+            {logoutError && (
+              <p role="alert" className="text-red-700">
+                {logoutError}
+              </p>
+            )}
+          </div>
         </header>
         <Outlet />
         <footer className="flex justify-between gap-6 border-t border-slate-200 py-6 text-[9px] leading-5 text-slate-400">

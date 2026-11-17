@@ -7,6 +7,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.auth import require_approved_student
+from app.auth import router as auth_router
 from app.db import get_db
 from app.models import Application, Document, Lesson
 from app.schemas import ApplicationOut, ChatRequest, DocumentOut, LessonOut
@@ -54,4 +55,5 @@ def chat(payload: ChatRequest):
 
 
 app.include_router(router)
+app.include_router(auth_router)
 app.include_router(protected)

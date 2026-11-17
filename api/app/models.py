@@ -1,25 +1,38 @@
 from datetime import date
 
-from sqlalchemy import CheckConstraint, Date, String, Text
+from sqlalchemy import CheckConstraint, Date, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db import Base
 
 
-class Student(Base):
-    __tablename__ = "students"
+class User(Base):
+    __tablename__ = "users"
     __table_args__ = (
         CheckConstraint("status IN ('pending', 'approved', 'blocked')"),
         CheckConstraint("role IN ('student', 'admin')"),
+        CheckConstraint(
+            "role = 'admin' OR (group_name IS NOT NULL AND length(trim(group_name)) > 0)",
+            name="student_group_required",
+        ),
     )
     id: Mapped[int] = mapped_column(primary_key=True)
     email: Mapped[str] = mapped_column(String(254), unique=True)
     first_name: Mapped[str] = mapped_column(String(100))
     last_name: Mapped[str] = mapped_column(String(100))
-    group_name: Mapped[str] = mapped_column(String(50))
+    group_name: Mapped[str | None] = mapped_column(String(50))
     password_hash: Mapped[str] = mapped_column(String(255))
     role: Mapped[str] = mapped_column(String(20), server_default="student")
-    status: Mapped[str] = mapped_column(String(20), server_default="pending")
+    status: Mapped[str] = mapped_column(String(20), server_default="approved")
+
+
+class AuthSession(Base):
+    __tablename__ = "auth_sessions"
+    token_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    expires_at: Mapped[int]
 
 
 class Document(Base):
