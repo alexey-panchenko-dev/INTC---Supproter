@@ -3,4 +3,5 @@ export type CollegeDocument = {
   title: string
   category: string
   url: string
+  description: string
 }
