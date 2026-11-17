@@ -17,15 +17,12 @@ from fastapi import (
     UploadFile,
 )
 from pypdf.errors import PdfReadError
-from sqlalchemy import func, select, text
+from sqlalchemy import delete, func, select, text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, defer
 
-from app.auth import (
-    require_admin,
-    require_approved_student,
-    require_same_origin,
-)
+from app.ai_chat import ai_router
+from app.auth import require_admin, require_approved_student, require_same_origin
 from app.auth import router as auth_router
 from app.db import get_db
 from app.document_parser import summarize_pdf_data
@@ -42,7 +39,6 @@ from app.models import (
 )
 from app.schemas import (
     ApplicationOut,
-    ChatRequest,
     CollegeSectionCreate,
     CollegeSectionItemCreate,
     CollegeSectionItemOut,
@@ -53,6 +49,7 @@ from app.schemas import (
     ContestSignupOut,
     DocumentOut,
     LessonOut,
+    ScheduleInput,
 )
 
 
@@ -446,16 +443,38 @@ def schedule(
     ).all()
 
 
+@router.put(
+    "/schedule",
+    response_model=list[LessonOut],
+    dependencies=[Depends(require_admin), Depends(require_same_origin)],
+)
+def save_schedule(
+    payload: ScheduleInput,
+    db: DB,
+    group: Annotated[str, Query(min_length=1, max_length=50)],
+    day: date,
+):
+    group = group.strip()
+    if not group:
+        raise HTTPException(422, "Укажите группу")
+    db.execute(delete(Lesson).where(Lesson.group_name == group, Lesson.date == day))
+    lessons = [
+        Lesson(group_name=group, date=day, **item.model_dump())
+        for item in sorted(payload.lessons, key=lambda lesson: lesson.starts_at)
+    ]
+    db.add_all(lessons)
+    db.commit()
+    for lesson in lessons:
+        db.refresh(lesson)
+    return lessons
+
+
 @protected.get("/applications", response_model=list[ApplicationOut])
 def applications(db: DB):
     return db.scalars(select(Application).order_by(Application.name).limit(200)).all()
 
 
-@protected.post("/chat", responses={503: {"description": "ИИ ещё не подключён"}})
-def chat(payload: ChatRequest):
-    raise HTTPException(503, "ИИ ещё не подключён. База документов готовится.")
-
-
 app.include_router(router)
 app.include_router(auth_router)
 app.include_router(protected)
+app.include_router(ai_router)

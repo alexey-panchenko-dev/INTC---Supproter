@@ -209,6 +209,34 @@ class LessonOut(ORMModel):
     room: str
 
 
+class LessonInput(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    starts_at: str = Field(pattern=r"^([01]\d|2[0-3]):[0-5]\d$")
+    ends_at: str = Field(pattern=r"^([01]\d|2[0-3]):[0-5]\d$")
+    subject: str = Field(min_length=1, max_length=200)
+    teacher: str = Field(min_length=1, max_length=200)
+    room: str = Field(min_length=1, max_length=50)
+
+    @model_validator(mode="after")
+    def validate_time(self):
+        if self.starts_at >= self.ends_at:
+            raise ValueError("Окончание пары должно быть позже начала")
+        return self
+
+
+class ScheduleInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    lessons: list[LessonInput] = Field(max_length=100)
+
+    @model_validator(mode="after")
+    def validate_overlaps(self):
+        ordered = sorted(self.lessons, key=lambda lesson: lesson.starts_at)
+        for previous, current in zip(ordered, ordered[1:]):
+            if previous.ends_at > current.starts_at:
+                raise ValueError("Время пар пересекается")
+        return self
+
+
 class ApplicationOut(ORMModel):
     id: int
     name: str

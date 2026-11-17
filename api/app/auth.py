@@ -68,11 +68,9 @@ def require_approved_student(user: Annotated[User, Depends(current_user)]) -> Us
     return user
 
 
-def require_admin(user: Annotated[User, Depends(current_user)]) -> User:
-    if user.status != "approved":
-        raise HTTPException(403, "Доступ к аккаунту ограничен администратором")
+def require_admin(user: Annotated[User, Depends(require_approved_student)]) -> User:
     if user.role != "admin":
-        raise HTTPException(403, "Добавлять документы может только администратор")
+        raise HTTPException(403, "Доступно только администратору")
     return user
 
 

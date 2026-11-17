@@ -14,7 +14,10 @@ from app.models import AuthSession, Lesson, User
 
 
 @pytest.fixture
-def client():
+def client(monkeypatch):
+    from app.ai_chat import ai_settings
+
+    monkeypatch.setattr(ai_settings, "api_key", "")
     engine = create_engine(
         "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
     )
@@ -222,3 +225,165 @@ def test_admin_login_without_group_and_cross_origin_rejected(client):
     assert response.json()["role"] == "admin"
     assert "group_name" not in response.json()
     assert client.get("/api/v1/auth/me").json()["role"] == "admin"
+
+
+def login_schedule_admin(client):
+    del app.dependency_overrides[require_approved_student]
+    db = app.dependency_overrides[get_db]()
+    db.add(
+        User(
+            email="schedule-admin@example.com",
+            first_name="Админ",
+            last_name="Расписания",
+            role="admin",
+            status="approved",
+            password_hash=hash_password("Admin-test-123"),
+        )
+    )
+    db.commit()
+    client.post(
+        "/api/v1/auth/login",
+        json={
+            "email": "schedule-admin@example.com",
+            "password": "Admin-test-123",
+        },
+    )
+
+
+def schedule_payload():
+    return {
+        "lessons": [
+            {
+                "starts_at": "08:00",
+                "ends_at": "09:20",
+                "subject": " Математика ",
+                "teacher": "Преподаватель",
+                "room": "606",
+            }
+        ]
+    }
+
+
+def test_admin_publishes_replaces_and_clears_selected_day(client):
+    login_schedule_admin(client)
+    url = "/api/v1/schedule?group=ИС-1&day=2026-11-17"
+    response = client.put(url, json=schedule_payload())
+    assert response.status_code == 200
+    assert [row["subject"] for row in client.get(url).json()] == ["Математика"]
+    assert (
+        client.get("/api/v1/schedule?group=ИС-2&day=2026-11-17").json()[0]["subject"]
+        == "Другая группа"
+    )
+    assert (
+        client.get("/api/v1/schedule?group=ИС-1&day=2026-11-18").json()[0]["subject"]
+        == "Другой день"
+    )
+    assert len(client.put(url, json=schedule_payload()).json()) == 1
+    assert client.put(url, json={"lessons": []}).status_code == 200
+    assert client.get(url).json() == []
+
+
+def test_schedule_write_rejects_guest_student_blocked_admin_and_cross_origin(client):
+    del app.dependency_overrides[require_approved_student]
+    url = "/api/v1/schedule?group=ИС-1&day=2026-11-17"
+    assert client.put(url, json=schedule_payload()).status_code == 401
+    client.post("/api/v1/auth/register", json=student_payload())
+    client.post(
+        "/api/v1/auth/login",
+        json={
+            "email": "student@example.com",
+            "password": student_payload()["password"],
+        },
+    )
+    assert client.put(url, json=schedule_payload()).status_code == 403
+    app.dependency_overrides[require_approved_student] = lambda: None
+    login_schedule_admin(client)
+    assert (
+        client.put(
+            url, json=schedule_payload(), headers={"Origin": "https://evil.example"}
+        ).status_code
+        == 403
+    )
+    db = app.dependency_overrides[get_db]()
+    db.scalar(select(User).where(User.role == "admin")).status = "blocked"
+    db.commit()
+    assert client.put(url, json=schedule_payload()).status_code == 403
+
+
+def test_schedule_rejects_invalid_rows_without_erasing_published_data(client):
+    login_schedule_admin(client)
+    url = "/api/v1/schedule?group=ИС-1&day=2026-11-17"
+    for changes in (
+        {"starts_at": "25:00"},
+        {"ends_at": "07:00"},
+        {"subject": " "},
+        {"teacher": ""},
+        {"room": "x" * 51},
+    ):
+        payload = schedule_payload()
+        payload["lessons"][0].update(changes)
+        assert client.put(url, json=payload).status_code == 422
+    payload = schedule_payload()
+    payload["lessons"].append(dict(payload["lessons"][0]))
+    assert client.put(url, json=payload).status_code == 422
+    assert client.get(url).json()[0]["subject"] == "Python"
+
+
+def test_chat_stream_route_uses_knowledge_and_returns_chunks(client, monkeypatch):
+    from app import ai_chat
+
+    monkeypatch.setattr(ai_chat.ai_settings, "api_key", "test-only")
+    monkeypatch.setattr(
+        ai_chat, "load_knowledge", lambda db: "Колледж находится в Алматы."
+    )
+
+    def answer(prompt, question):
+        assert "Колледж находится в Алматы." in prompt
+        assert question == "Где колледж?"
+        yield "В "
+        yield "Алматы."
+
+    monkeypatch.setattr(ai_chat, "stream_answer", answer)
+    response = client.post("/api/v1/chat", json={"message": "Где колледж?"})
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/plain")
+    assert response.text == "В Алматы."
+    assert sum(route.path == "/api/v1/chat" for route in app.routes) == 1
+
+
+def test_chat_missing_knowledge_does_not_call_provider(client, monkeypatch):
+    from app import ai_chat
+
+    monkeypatch.setattr(ai_chat.ai_settings, "api_key", "test-only")
+    monkeypatch.setattr(ai_chat, "load_knowledge", lambda db: "")
+
+    def unexpected(*args):
+        raise AssertionError("Provider must not be called without knowledge")
+
+    monkeypatch.setattr(ai_chat, "stream_answer", unexpected)
+    response = client.post("/api/v1/chat", json={"message": "Где колледж?"})
+    assert response.status_code == 200
+    assert response.text == ai_chat.NO_DATA
+
+
+def test_chat_keeps_auth_and_origin_protection(client):
+    assert (
+        client.post(
+            "/api/v1/chat",
+            json={"message": "Вопрос"},
+            headers={"Origin": "https://evil.example"},
+        ).status_code
+        == 403
+    )
+    del app.dependency_overrides[require_approved_student]
+    assert client.post("/api/v1/chat", json={"message": "Вопрос"}).status_code == 401
+
+
+def test_chat_stream_handles_provider_error(monkeypatch):
+    from app import ai_chat
+
+    def broken_client():
+        raise RuntimeError("Provider unavailable")
+
+    monkeypatch.setattr(ai_chat, "get_client", broken_client)
+    assert "Ошибка ИИ-сервиса" in "".join(ai_chat.stream_answer("Контекст", "Вопрос"))
