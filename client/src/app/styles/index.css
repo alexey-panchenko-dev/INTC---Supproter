@@ -1,22 +1,38 @@
-@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap');
 @import 'tailwindcss';
 
 @theme {
-  --font-sans: 'Manrope', Arial, sans-serif;
-  --color-accent: #168abe;
-  --color-ink: #182b3d;
-  --color-muted: #60788b;
-  --color-canvas: #f5f7fa;
+  --font-sans: 'DM Sans', Arial, sans-serif;
+  --color-accent: #2f9fce;
+  --color-ink: #163247;
+  --color-muted: #61788a;
+  --color-canvas: #f4f8fb;
 }
 
 @layer base {
+  :root {
+    color-scheme: light;
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    --portal-border: #e2ebf1;
+    --portal-blue-50: #eff9fd;
+    --portal-blue-100: #def3fb;
+    --portal-blue-500: #42b2e2;
+    --portal-blue-700: #1477a1;
+    --portal-navy: #163247;
+    --portal-muted: #61788a;
+  }
+
   body {
     @apply m-0 min-w-80 bg-canvas font-sans text-ink antialiased;
   }
 
   button,
   a,
-  input {
+  input,
+  select,
+  textarea {
     @apply focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent;
   }
 
@@ -26,5 +42,53 @@
 
   ::selection {
     @apply bg-sky-200;
+  }
+}
+
+@layer components {
+  .portal-card {
+    @apply rounded-2xl border bg-white;
+    border-color: var(--portal-border);
+    box-shadow: 0 8px 28px -26px rgba(22, 50, 71, 0.3);
+  }
+
+  .portal-field {
+    @apply min-h-11 w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm text-ink transition;
+    border-color: var(--portal-border);
+  }
+
+  .portal-field::placeholder {
+    color: #91a3b0;
+  }
+
+  .portal-field:focus {
+    border-color: var(--portal-blue-500);
+    box-shadow: 0 0 0 3px rgba(66, 178, 226, 0.16);
+    outline: none;
+  }
+
+  .portal-primary {
+    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold text-white transition;
+    background: var(--portal-navy);
+  }
+
+  .portal-primary:hover {
+    background: #234b64;
+  }
+
+  .portal-link {
+    @apply font-semibold transition;
+    color: var(--portal-blue-700);
+  }
+
+  .portal-link:hover {
+    color: var(--portal-navy);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  a,
+  button {
+    transition-duration: 160ms;
   }
 }
