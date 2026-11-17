@@ -1,3 +1,4 @@
+import hashlib
 import io
 import logging
 import time
@@ -60,6 +61,20 @@ def pdf_to_text(data: bytes) -> str:
     return "\n".join(page.extract_text() or "" for page in reader.pages)[:MAX_DOC_CHARS]
 
 
+def cached_pdf_text(cache_key: str, data: bytes) -> str:
+    cached = _cache.get(cache_key)
+    if cached and time.time() - cached[0] < CACHE_TTL:
+        return cached[1]
+    try:
+        text = pdf_to_text(data)
+    except Exception:
+        logging.exception("PDF parsing failed: %s", cache_key)
+        return ""
+    if text:
+        _cache[cache_key] = (time.time(), text)
+    return text
+
+
 def fetch_pdf_text(url: str) -> str:
     cached = _cache.get(url)
     if cached and time.time() - cached[0] < CACHE_TTL:
@@ -73,38 +88,46 @@ def fetch_pdf_text(url: str) -> str:
             if KNOWLEDGE_DIR not in path.parents:
                 return ""
             data = path.read_bytes()
-        text = pdf_to_text(data)
     except Exception:
         logging.exception("PDF read failed: %s", url)
         return ""
-    if text:
-        _cache[url] = (time.time(), text)
-    return text
+    return cached_pdf_text(url, data)
 
 
 def load_knowledge(db: Session) -> str:
-    sources = [
-        (document.title, document.category, document.url)
-        for document in db.scalars(
-            select(Document).order_by(Document.title).limit(50)
-        ).all()
-    ]
-    if not sources and KNOWLEDGE_DIR.is_dir():
-        sources = [
-            (path.stem, "Колледж", path.name)
-            for path in sorted(KNOWLEDGE_DIR.glob("*.pdf"))
-        ]
+    documents = db.scalars(select(Document).order_by(Document.title).limit(50)).all()
     parts: list[str] = []
     total = 0
-    for title, category, url in sources:
-        text = fetch_pdf_text(url)
+
+    def add_source(title: str, category: str, text: str) -> bool:
+        nonlocal total
         if not text:
-            continue
+            return True
         block = f"### {title} ({category})\n{text}"
         if total + len(block) > MAX_TOTAL_CHARS:
-            break
+            return False
         parts.append(block)
         total += len(block)
+        return True
+
+    for document in documents:
+        if document.file_data:
+            digest = hashlib.sha256(document.file_data).hexdigest()
+            text = cached_pdf_text(
+                f"document:{document.id}:{digest}", document.file_data
+            )
+        else:
+            text = fetch_pdf_text(document.url)
+        if not add_source(document.title, document.category, text):
+            break
+
+    # Database records can exist while their PDFs are unreadable. In that case,
+    # retain the bundled knowledge directory as a working fallback.
+    if not parts and KNOWLEDGE_DIR.is_dir():
+        for path in sorted(KNOWLEDGE_DIR.glob("*.pdf")):
+            if not add_source(path.stem, "Колледж", fetch_pdf_text(path.name)):
+                break
+
     return "\n\n".join(parts)
 
 

@@ -10,7 +10,7 @@ from sqlalchemy.pool import StaticPool
 from app.auth import hash_password, require_approved_student
 from app.db import Base, get_db
 from app.main import app
-from app.models import AuthSession, Lesson, User
+from app.models import AuthSession, Document, Lesson, User
 
 
 @pytest.fixture
@@ -361,6 +361,71 @@ def test_chat_stream_route_uses_knowledge_and_returns_chunks(client, monkeypatch
     assert response.headers["content-type"].startswith("text/plain")
     assert response.text == "В Алматы."
     assert sum(route.path == "/api/v1/chat" for route in app.routes) == 1
+
+
+def test_chat_knowledge_reads_pdf_bytes_from_database(client, monkeypatch, tmp_path):
+    from app import ai_chat
+
+    db = app.dependency_overrides[get_db]()
+    document = Document(
+        title="Правила колледжа",
+        category="Документы",
+        url="/api/v1/documents/1/file",
+        description="",
+        file_name="rules.pdf",
+        file_data=b"database-pdf",
+    )
+    db.add(document)
+    db.commit()
+    ai_chat._cache.clear()
+    monkeypatch.setattr(ai_chat, "KNOWLEDGE_DIR", tmp_path)
+    monkeypatch.setattr(
+        ai_chat,
+        "pdf_to_text",
+        lambda data: "В колледже действует кодекс чести."
+        if data == b"database-pdf"
+        else "",
+    )
+
+    knowledge = ai_chat.load_knowledge(db)
+
+    assert "Правила колледжа" in knowledge
+    assert "В колледже действует кодекс чести." in knowledge
+
+
+def test_chat_knowledge_falls_back_when_database_pdf_is_unreadable(
+    client, monkeypatch, tmp_path
+):
+    from app import ai_chat
+
+    db = app.dependency_overrides[get_db]()
+    db.add(
+        Document(
+            title="Скан",
+            category="Документы",
+            url="/api/v1/documents/1/file",
+            description="",
+            file_name="scan.pdf",
+            file_data=b"unreadable-scan",
+        )
+    )
+    db.commit()
+    fallback = tmp_path / "college.pdf"
+    fallback.write_bytes(b"bundled-pdf")
+    ai_chat._cache.clear()
+    monkeypatch.setattr(ai_chat, "KNOWLEDGE_DIR", tmp_path)
+    monkeypatch.setattr(
+        ai_chat,
+        "pdf_to_text",
+        lambda data: "Информация из резервного PDF."
+        if data == b"bundled-pdf"
+        else "",
+    )
+
+    knowledge = ai_chat.load_knowledge(db)
+
+    assert "college" in knowledge
+    assert "Информация из резервного PDF." in knowledge
 
 
 def test_chat_missing_knowledge_does_not_call_provider(client, monkeypatch):
