@@ -19,13 +19,14 @@ export function PortalLayout() {
     }
   }
   const { pathname } = useLocation()
+  const isAuth = pathname === '/auth'
   const currentTitle =
     navigation.find((item) => item.path === pathname)?.title ??
     (pathname === '/auth' ? 'Вход и регистрация' : 'Страница')
 
   return (
-    <div className="min-h-screen md:grid md:grid-cols-[220px_1fr] xl:grid-cols-[244px_1fr]">
-      <aside className="flex flex-col border-b border-slate-200 bg-white p-4 md:border-r md:border-b-0 md:px-5 md:py-10">
+    <div className={isAuth ? "min-h-screen bg-canvas" : "min-h-screen md:grid md:grid-cols-[220px_1fr] xl:grid-cols-[244px_1fr]"}>
+      {!isAuth && <aside className="flex flex-col border-b border-slate-200 bg-white p-4 md:border-r md:border-b-0 md:px-5 md:py-10">
         <Link className="flex items-center gap-3 font-extrabold" to="/">
           <span className="grid h-12 w-11 place-items-center rounded-xl bg-sky-200 text-2xl text-sky-700">
             I.
@@ -61,9 +62,9 @@ export function PortalLayout() {
           ● Начало большого проекта
           <p className="mt-3 text-slate-400">Всё для учёбы — в одном месте.</p>
         </div>
-      </aside>
-      <main className="mx-auto w-full max-w-7xl min-w-0 px-5 md:px-8 xl:px-12">
-        <header className="flex h-20 items-center justify-between gap-4 text-[10px] text-slate-400 md:h-25">
+      </aside>}
+      <main className={isAuth ? "w-full min-w-0" : "mx-auto w-full max-w-7xl min-w-0 px-5 md:px-8 xl:px-12"}>
+        {!isAuth && <header className="flex h-20 items-center justify-between gap-4 text-[10px] text-slate-400 md:h-25">
           <span>
             Студенческий портал /{' '}
             <strong className="font-medium text-slate-600">{currentTitle}</strong>
@@ -108,12 +109,12 @@ export function PortalLayout() {
               </p>
             )}
           </div>
-        </header>
+        </header>}
         <Outlet />
-        <footer className="flex justify-between gap-6 border-t border-slate-200 py-6 text-[9px] leading-5 text-slate-400">
+        {!isAuth && <footer className="flex justify-between gap-6 border-t border-slate-200 py-6 text-[9px] leading-5 text-slate-400">
           <span>INTC - Supporter</span>
           <span>Создаём для студентов, вместе со студентами.</span>
-        </footer>
+        </footer>}
       </main>
     </div>
   )
