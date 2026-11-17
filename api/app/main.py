@@ -6,11 +6,12 @@ from sqlalchemy import delete, select, text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from app.ai_chat import ai_router
 from app.auth import require_admin, require_approved_student, require_same_origin
 from app.auth import router as auth_router
 from app.db import get_db
 from app.models import Application, Document, Lesson
-from app.schemas import ApplicationOut, ChatRequest, DocumentOut, LessonOut, ScheduleInput
+from app.schemas import ApplicationOut, DocumentOut, LessonOut, ScheduleInput
 
 app = FastAPI(title="INTC - Supporter API", version="0.1.0")
 router = APIRouter(prefix="/api/v1")
@@ -75,11 +76,7 @@ def applications(db: DB):
     return db.scalars(select(Application).order_by(Application.name).limit(200)).all()
 
 
-@protected.post("/chat", responses={503: {"description": "ИИ ещё не подключён"}})
-def chat(payload: ChatRequest):
-    raise HTTPException(503, "ИИ ещё не подключён. База документов готовится.")
-
-
 app.include_router(router)
 app.include_router(auth_router)
 app.include_router(protected)
+app.include_router(ai_router)

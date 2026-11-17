@@ -14,7 +14,10 @@ from app.models import AuthSession, Lesson, User
 
 
 @pytest.fixture
-def client():
+def client(monkeypatch):
+    from app.ai_chat import ai_settings
+
+    monkeypatch.setattr(ai_settings, "api_key", "")
     engine = create_engine(
         "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
     )
@@ -324,3 +327,63 @@ def test_schedule_rejects_invalid_rows_without_erasing_published_data(client):
     payload["lessons"].append(dict(payload["lessons"][0]))
     assert client.put(url, json=payload).status_code == 422
     assert client.get(url).json()[0]["subject"] == "Python"
+
+
+def test_chat_stream_route_uses_knowledge_and_returns_chunks(client, monkeypatch):
+    from app import ai_chat
+
+    monkeypatch.setattr(ai_chat.ai_settings, "api_key", "test-only")
+    monkeypatch.setattr(
+        ai_chat, "load_knowledge", lambda db: "Колледж находится в Алматы."
+    )
+
+    def answer(prompt, question):
+        assert "Колледж находится в Алматы." in prompt
+        assert question == "Где колледж?"
+        yield "В "
+        yield "Алматы."
+
+    monkeypatch.setattr(ai_chat, "stream_answer", answer)
+    response = client.post("/api/v1/chat", json={"message": "Где колледж?"})
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/plain")
+    assert response.text == "В Алматы."
+    assert sum(route.path == "/api/v1/chat" for route in app.routes) == 1
+
+
+def test_chat_missing_knowledge_does_not_call_provider(client, monkeypatch):
+    from app import ai_chat
+
+    monkeypatch.setattr(ai_chat.ai_settings, "api_key", "test-only")
+    monkeypatch.setattr(ai_chat, "load_knowledge", lambda db: "")
+
+    def unexpected(*args):
+        raise AssertionError("Provider must not be called without knowledge")
+
+    monkeypatch.setattr(ai_chat, "stream_answer", unexpected)
+    response = client.post("/api/v1/chat", json={"message": "Где колледж?"})
+    assert response.status_code == 200
+    assert response.text == ai_chat.NO_DATA
+
+
+def test_chat_keeps_auth_and_origin_protection(client):
+    assert (
+        client.post(
+            "/api/v1/chat",
+            json={"message": "Вопрос"},
+            headers={"Origin": "https://evil.example"},
+        ).status_code
+        == 403
+    )
+    del app.dependency_overrides[require_approved_student]
+    assert client.post("/api/v1/chat", json={"message": "Вопрос"}).status_code == 401
+
+
+def test_chat_stream_handles_provider_error(monkeypatch):
+    from app import ai_chat
+
+    def broken_client():
+        raise RuntimeError("Provider unavailable")
+
+    monkeypatch.setattr(ai_chat, "get_client", broken_client)
+    assert "Ошибка ИИ-сервиса" in "".join(ai_chat.stream_answer("Контекст", "Вопрос"))
