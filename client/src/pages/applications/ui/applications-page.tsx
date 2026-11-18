@@ -6,6 +6,7 @@ import { apiRequest } from '@/shared/api/client'
 import { useApiQuery } from '@/shared/api/use-api-query'
 import { useI18n } from '@/shared/i18n'
 import { safeLink } from '@/shared/lib/safe-link'
+import { PageHeading } from '@/shared/ui/page-heading'
 import { QueryState } from '@/shared/ui/query-state'
 
 const pricingLabels = {
@@ -113,26 +114,10 @@ export function ApplicationsPage() {
 
   return (
     <section className="min-h-[65vh] w-full min-w-0 pb-12">
-      <div className="relative mb-8 w-full min-w-0 overflow-hidden rounded-3xl border border-sky-100 bg-sky-50 px-6 py-8 sm:px-8 sm:py-10">
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute -top-16 -right-16 size-64 rounded-full border-[32px] border-white/60"
-        />
-        <p className="relative mb-4 text-[9px] font-extrabold tracking-[0.18em] text-accent">
-          {t('ТВОЙ НАБОР ИНСТРУМЕНТОВ')}
-        </p>
-        <h1 className="relative text-3xl font-extrabold tracking-tight md:text-4xl">
-          {t('Приложения')}
-        </h1>
-        <h2 className="relative mt-4 text-lg font-semibold tracking-tight">
-          {t('Всё, чтобы начать создавать.')}
-        </h2>
-        <p className="relative mt-3 max-w-xl text-xs leading-7 text-muted">
-          {t(
-            'Редакторы кода, базы данных и другие инструменты для учёбы. Выбирай приложение и переходи на официальный сайт скачивания.',
-          )}
-        </p>
-      </div>
+      <PageHeading
+        title={t('Приложения')}
+        description={t('Каталог инструментов для практических и теоретических занятий.')}
+      />
       <div className="mb-6 flex w-full min-w-0 flex-wrap items-center justify-between gap-4">
         <p className="hidden text-xs text-muted [@media(hover:hover)]:block">
           {t('Наведи на карточку, чтобы узнать больше.')}

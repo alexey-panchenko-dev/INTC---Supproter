@@ -56,7 +56,10 @@ export function ChatPage() {
 
   return (
     <section className="flex min-h-[calc(100dvh-7rem)] flex-col pb-4">
-      <PageHeading title={t('ИИ-помощник')} />
+      <PageHeading
+        title={t('ИИ-помощник')}
+        description={t('Ответы на основе документов колледжа.')}
+      />
       {messages.length === 0 ? (
         <div className="flex flex-1 items-center justify-center pb-6">
           <div className="w-full max-w-3xl">

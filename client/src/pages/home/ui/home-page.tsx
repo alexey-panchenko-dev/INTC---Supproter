@@ -1,7 +1,7 @@
-import { useI18n } from '@/shared/i18n'
 import { Link } from 'react-router-dom'
 import { useAuth } from '@/entities/session'
 import { navigation } from '@/shared/config/navigation'
+import { useI18n } from '@/shared/i18n'
 
 const featurePaths = [
   'M4 5h16v15H4z M8 3v4 M16 3v4 M4 10h16 M8 14h3 M13 14h3',
@@ -27,101 +27,27 @@ function FeatureIcon({ index }: { index: number }) {
   )
 }
 
-function CampusIllustration() {
-  return (
-    <div
-      className="relative hidden min-h-[300px] items-center justify-center lg:flex"
-      aria-hidden="true"
-    >
-      <div className="absolute top-2 right-3 size-[290px] rounded-full border border-sky-200/80" />
-      <div className="absolute top-10 right-11 size-[220px] rounded-full border border-sky-200/60" />
-      <div className="relative z-10 w-full max-w-[380px] rotate-[2deg] rounded-[26px] border border-white bg-white/80 p-4 shadow-[0_26px_70px_-38px_rgba(20,119,161,.5)] backdrop-blur-sm">
-        <div className="flex items-center justify-between rounded-t-[18px] bg-[#eaf7fd] px-4 py-3">
-          <span className="text-[10px] font-extrabold tracking-[0.14em] text-sky-800">
-            INTC / CAMPUS
-          </span>
-          <span className="size-2 rounded-full bg-sky-400" />
-        </div>
-        <svg
-          className="h-[214px] w-full rounded-b-[18px] bg-gradient-to-br from-[#eaf7fd] to-[#d8eff9]"
-          viewBox="0 0 360 214"
-          fill="none"
-        >
-          <path d="M0 171c54-24 95-22 144 0 60 27 118 24 216-9v52H0z" fill="#BFE6F5" />
-          <path
-            d="M78 166V94l102-53 102 53v72"
-            stroke="#1886B1"
-            strokeWidth="5"
-            strokeLinejoin="round"
-          />
-          <path
-            d="M101 165V105l79-41 79 41v60"
-            fill="#F8FCFE"
-            stroke="#1886B1"
-            strokeWidth="4"
-            strokeLinejoin="round"
-          />
-          <path
-            d="M143 165v-38a37 37 0 0 1 74 0v38"
-            fill="#DDF2FA"
-            stroke="#1886B1"
-            strokeWidth="4"
-          />
-          <path
-            d="M117 112h20v20h-20zM223 112h20v20h-20zM151 89h18v18h-18zM191 89h18v18h-18z"
-            fill="#9BD7EF"
-            stroke="#1886B1"
-            strokeWidth="3"
-          />
-          <path
-            d="M61 166h238M48 174h264"
-            stroke="#1886B1"
-            strokeWidth="4"
-            strokeLinecap="round"
-          />
-          <circle cx="291" cy="52" r="20" fill="#C8EAF7" />
-          <path
-            d="M298 42v20M288 52h20"
-            stroke="#1886B1"
-            strokeWidth="3"
-            strokeLinecap="round"
-          />
-        </svg>
-        <div className="flex items-center justify-between px-2 pt-3">
-          <span className="text-[10px] font-bold tracking-[0.12em] text-slate-500">
-            STUDENT SUPPORTER
-          </span>
-          <span className="text-[10px] text-sky-700">ALMATY</span>
-        </div>
-      </div>
-      <div className="absolute bottom-7 left-0 z-20 grid size-12 place-items-center rounded-2xl border border-sky-100 bg-white text-sky-700 shadow-lg">
-        <FeatureIcon index={0} />
-      </div>
-    </div>
-  )
-}
-
 export function HomePage() {
-  const { t } = useI18n()
-
   const { session } = useAuth()
+  const { t } = useI18n()
 
   return (
     <div className="space-y-8 md:space-y-10">
-      <section className="relative isolate overflow-hidden rounded-[28px] border border-sky-100 bg-gradient-to-br from-[#e8f6fd] via-[#eff9fd] to-[#f8fcfe] px-6 py-7 sm:px-9 sm:py-9 lg:grid lg:min-h-[430px] lg:grid-cols-[minmax(0,1.05fr)_minmax(300px,.8fr)] lg:items-center lg:gap-5 lg:px-12 lg:py-10">
-        <div className="pointer-events-none absolute -top-24 -right-20 -z-10 size-64 rounded-full bg-white/50 blur-2xl lg:hidden" />
-        <div className="max-w-[640px]">
+      <section className="relative isolate overflow-hidden rounded-[28px] border border-sky-100 bg-gradient-to-br from-[#eaf7fd] via-[#f2faff] to-white px-6 py-8 sm:px-9 sm:py-10 lg:px-12 lg:py-12">
+        <div className="pointer-events-none absolute -top-20 -right-16 -z-10 size-72 rounded-full border-[38px] border-sky-100/70 sm:top-2 sm:right-3 sm:size-80 sm:border-[46px]" />
+        <div className="pointer-events-none absolute top-16 right-12 -z-10 hidden h-48 w-56 rotate-[-7deg] rounded-[28px] border border-sky-200 bg-white/70 shadow-[0_22px_60px_-38px_rgba(20,119,161,.55)] lg:block" />
+        <div className="max-w-[650px]">
           <p className="text-[11px] font-extrabold tracking-[0.17em] text-sky-700">
             INTC / STUDENT SUPPORTER
           </p>
-          <h2 className="mt-5 text-[clamp(2rem,5vw,3.65rem)] leading-[1.08] font-extrabold tracking-[-0.045em] text-ink">
-            {t('Твоя жизнь')} <br className="hidden sm:block" /> {t('в колледже.')} <br />
-            <span className="text-accent">{t('В одном месте.')}</span>
+          <h2 className="mt-5 text-[clamp(2rem,5vw,3.8rem)] leading-[1.08] font-extrabold tracking-[-0.045em] text-ink">
+            {t('Информация об учёбе')}
+            <br className="hidden sm:block" /> {t('собрана в одном месте')}
           </h2>
-          <p className="mt-4 max-w-[480px] text-sm leading-6 text-muted sm:text-base sm:leading-7">
+          <p className="mt-4 max-w-[500px] text-sm leading-6 text-muted sm:text-base sm:leading-7">
             {t(
-              'Расписание, документы и учебные приложения собраны в одном студенческом портале.',
-            )}{' '}
+              'Расписание, документы колледжа и учебные приложения — в спокойном и понятном студенческом портале.',
+            )}
           </p>
           <div className="mt-6 flex flex-wrap items-center gap-3">
             <Link
@@ -148,7 +74,15 @@ export function HomePage() {
             )}
           </div>
         </div>
-        <CampusIllustration />
+        <div className="mt-8 flex items-center gap-3 border-t border-sky-100 pt-5 text-xs text-muted lg:absolute lg:right-10 lg:bottom-9 lg:mt-0 lg:border-0 lg:pt-0">
+          <span className="grid size-9 place-items-center rounded-xl bg-white text-sky-700 shadow-sm">
+            <FeatureIcon index={0} />
+          </span>
+          <span>
+            <strong className="block text-ink">{t('Учёба без лишнего поиска')}</strong>
+            {t('Основные разделы рядом')}
+          </span>
+        </div>
       </section>
 
       {session?.role === 'student' && session.status === 'blocked' && (
@@ -173,10 +107,10 @@ export function HomePage() {
         <div className="mb-4 flex items-end justify-between gap-4">
           <div>
             <p className="text-[10px] font-extrabold tracking-[0.16em] text-sky-700">
-              {t('БЫСТРЫЙ ДОСТУП')}
+              {t('РАЗДЕЛЫ ПОРТАЛА')}
             </p>
             <h2 className="mt-1.5 text-xl font-bold tracking-tight text-ink sm:text-2xl">
-              {t('Что нужно сегодня?')}
+              {t('Куда перейти?')}
             </h2>
           </div>
         </div>
@@ -214,7 +148,7 @@ export function HomePage() {
           <p className="mt-1 text-sm leading-6 text-muted">
             {t(
               'Помощник опирается на доступные документы, показывает источники и сообщает, если в материалах недостаточно сведений.',
-            )}{' '}
+            )}
           </p>
         </div>
         <Link className="portal-link shrink-0 text-sm sm:ml-auto" to="/chat">

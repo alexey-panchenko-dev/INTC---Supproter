@@ -48,16 +48,16 @@ export function SchedulePage() {
   }
 
   return (
-    <section className="min-h-[65vh] py-8">
+    <section className="min-h-[65vh]">
       <PageHeading
         title={t('Расписание')}
         description={t('Выбери группу и дату, чтобы увидеть свои пары.')}
       />
-      <div className="mb-8 flex flex-col gap-5 sm:flex-row">
-        <label className="grid gap-2 text-xs">
+      <div className="portal-card mb-6 grid gap-4 p-4 sm:grid-cols-[minmax(220px,1fr)_minmax(200px,.8fr)] sm:p-5">
+        <label className="grid gap-2 text-sm font-semibold text-ink">
           {t('Группа')}
           <input
-            className="rounded-lg border border-slate-200 bg-white p-3"
+            className="portal-field"
             placeholder={t('Например, ИС-23-1')}
             maxLength={50}
             value={group}
@@ -68,10 +68,10 @@ export function SchedulePage() {
             }}
           />
         </label>
-        <label className="grid gap-2 text-xs">
+        <label className="grid gap-2 text-sm font-semibold text-ink">
           {t('Дата')}
           <input
-            className="rounded-lg border border-slate-200 bg-white p-3"
+            className="portal-field"
             type="date"
             value={day}
             disabled={mode !== 'view'}
@@ -96,7 +96,7 @@ export function SchedulePage() {
                 setSuccess('')
                 setMode('import')
               }}
-              className="min-h-11 rounded-lg bg-accent px-5 text-sm text-white"
+              className="portal-primary px-5"
             >
               {t('Загрузить фото расписания')}
             </button>
@@ -108,7 +108,7 @@ export function SchedulePage() {
                 setSuccess('')
                 setMode('edit')
               }}
-              className="min-h-11 rounded-lg border border-slate-200 bg-white px-5 text-sm"
+              className="min-h-11 rounded-xl border border-slate-200 bg-white px-5 text-sm font-semibold text-ink transition hover:border-sky-200 hover:bg-sky-50"
             >
               {t('Заполнить / изменить расписание дня')}
             </button>
@@ -148,23 +148,35 @@ export function SchedulePage() {
             : t('Введи свою группу, чтобы посмотреть расписание.')
         }
       >
-        {data?.map((lesson) => (
-          <article
-            className="rounded-xl border border-slate-200 bg-white p-6"
-            key={lesson.id}
-          >
-            <p className="text-xs text-accent">
-              {lesson.starts_at} — {lesson.ends_at}
-            </p>
-            <h2 className="my-3 font-bold">{lesson.subject}</h2>
-            <p className="text-sm text-muted">
-              {[lesson.teacher, lesson.room && `${t('ауд.')} ${lesson.room}`]
-                .filter(Boolean)
-                .join(' · ')}
-            </p>
-            {lesson.note && <p className="mt-2 text-xs text-muted">{lesson.note}</p>}
-          </article>
-        ))}
+        <div className="grid gap-3">
+          {data?.map((lesson, index) => (
+            <article
+              className="portal-card grid gap-3 p-4 sm:grid-cols-[110px_minmax(0,1fr)] sm:items-center sm:gap-5 sm:p-5"
+              key={lesson.id}
+            >
+              <div className="flex items-center gap-3 sm:block">
+                <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-sky-50 text-xs font-bold text-sky-800">
+                  {String(index + 1).padStart(2, '0')}
+                </span>
+                <p className="text-sm font-bold text-sky-800 tabular-nums">
+                  {lesson.starts_at} <span className="font-normal text-slate-400">—</span>{' '}
+                  {lesson.ends_at}
+                </p>
+              </div>
+              <div className="min-w-0 border-t border-slate-100 pt-3 sm:border-t-0 sm:border-l sm:py-1 sm:pl-5">
+                <h2 className="text-base leading-6 font-bold text-ink">
+                  {lesson.subject}
+                </h2>
+                <p className="mt-1 text-sm leading-5 text-muted">
+                  {[lesson.teacher, lesson.room && `${t('ауд.')} ${lesson.room}`]
+                    .filter(Boolean)
+                    .join(' · ')}
+                </p>
+                {lesson.note && <p className="mt-2 text-xs text-muted">{lesson.note}</p>}
+              </div>
+            </article>
+          ))}
+        </div>
       </QueryState>
     </section>
   )

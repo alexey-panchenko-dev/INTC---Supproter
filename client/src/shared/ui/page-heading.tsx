@@ -5,12 +5,15 @@ type PageHeadingProps = {
 
 export function PageHeading({ title, description }: PageHeadingProps) {
   return (
-    <div className="mb-8">
-      <p className="mb-4 text-[10px] font-extrabold tracking-[0.2em] text-muted">
-        INTC - SUPPORTER
-      </p>
-      <h1 className="text-3xl font-extrabold tracking-tight md:text-4xl">{title}</h1>
-      {description && <p className="mt-4 text-sm leading-7 text-muted">{description}</p>}
+    <div className="mb-6 md:mb-8">
+      <h1 className="text-2xl leading-tight font-extrabold tracking-tight text-ink sm:text-3xl md:text-4xl">
+        {title}
+      </h1>
+      {description && (
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-muted sm:text-base sm:leading-7">
+          {description}
+        </p>
+      )}
     </div>
   )
 }
