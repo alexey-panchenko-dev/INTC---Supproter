@@ -46,6 +46,40 @@ class RegisterRequest(LoginRequest):
         return normalize_group(value)
 
 
+class ProfileUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    email: EmailStr = Field(max_length=254)
+    first_name: str = Field(min_length=1, max_length=100)
+    last_name: str = Field(min_length=1, max_length=100)
+    group_name: str | None = Field(default=None, max_length=50)
+    current_password: str | None = Field(default=None, min_length=1, max_length=128)
+    new_password: str | None = Field(default=None, min_length=8, max_length=128)
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def normalize_email(cls, value):
+        return value.strip().lower() if isinstance(value, str) else value
+
+    @field_validator("first_name", "last_name", mode="before")
+    @classmethod
+    def trim_profile_text(cls, value):
+        return value.strip() if isinstance(value, str) else value
+
+    @field_validator("group_name", mode="before")
+    @classmethod
+    def canonical_optional_group(cls, value):
+        if not isinstance(value, str):
+            return value
+        value = value.strip()
+        return normalize_group(value) if value else None
+
+    @model_validator(mode="after")
+    def require_current_password(self):
+        if self.new_password and not self.current_password:
+            raise ValueError("Для смены пароля укажите текущий пароль")
+        return self
+
+
 class UserOut(ORMModel):
     id: int
     first_name: str

@@ -12,7 +12,13 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.db import get_db
 from app.models import AuthSession, User
-from app.schemas import AdminOut, LoginRequest, RegisterRequest, StudentOut
+from app.schemas import (
+    AdminOut,
+    LoginRequest,
+    ProfileUpdate,
+    RegisterRequest,
+    StudentOut,
+)
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 DB = Annotated[Session, Depends(get_db)]
@@ -138,6 +144,38 @@ def login(payload: LoginRequest, request: Request, response: Response, db: DB):
 
 @router.get("/me", response_model=StudentOut | AdminOut)
 def me(user: Annotated[User, Depends(current_user)]):
+    return user
+
+
+@router.put(
+    "/me",
+    response_model=StudentOut | AdminOut,
+    dependencies=[Depends(require_same_origin)],
+)
+def update_me(
+    payload: ProfileUpdate,
+    user: Annotated[User, Depends(current_user)],
+    db: DB,
+):
+    if user.role == "student" and not payload.group_name:
+        raise HTTPException(422, "Укажите группу")
+    if payload.new_password and not verify_password(
+        payload.current_password or "", user.password_hash
+    ):
+        raise HTTPException(400, "Текущий пароль указан неверно")
+
+    user.email = str(payload.email)
+    user.first_name = payload.first_name
+    user.last_name = payload.last_name
+    user.group_name = payload.group_name if user.role == "student" else None
+    if payload.new_password:
+        user.password_hash = hash_password(payload.new_password)
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(409, "Эта почта уже зарегистрирована") from None
+    db.refresh(user)
     return user
 
 

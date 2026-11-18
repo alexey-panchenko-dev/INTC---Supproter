@@ -7,7 +7,7 @@ from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
-from app.auth import hash_password, require_approved_student
+from app.auth import hash_password, require_approved_student, verify_password
 from app.db import Base, get_db
 from app.main import app
 from app.models import AuthSession, Document, Lesson, User
@@ -177,6 +177,76 @@ def test_registration_validation_and_privilege_escalation(client):
         ).status_code
         == 409
     )
+
+
+def test_user_updates_profile_without_changing_role(client):
+    del app.dependency_overrides[require_approved_student]
+    assert client.post("/api/v1/auth/register", json=student_payload()).status_code == 201
+    assert (
+        client.post(
+            "/api/v1/auth/login",
+            json={"email": "student@example.com", "password": "Student-test-123"},
+        ).status_code
+        == 200
+    )
+    payload = {
+        "email": " Updated@Example.com ",
+        "first_name": " Айдос ",
+        "last_name": " Садыков ",
+        "group_name": "тис 24р",
+        "current_password": "Student-test-123",
+        "new_password": "Updated-test-456",
+    }
+    response = client.put("/api/v1/auth/me", json=payload)
+    assert response.status_code == 200
+    assert response.json() == {
+        "id": response.json()["id"],
+        "first_name": "Айдос",
+        "last_name": "Садыков",
+        "email": "updated@example.com",
+        "status": "approved",
+        "role": "student",
+        "group_name": "ТИС-24Р",
+    }
+    user = app.dependency_overrides[get_db]().scalar(select(User))
+    assert user.role == "student"
+    assert verify_password("Updated-test-456", user.password_hash)
+    assert not verify_password("Student-test-123", user.password_hash)
+
+
+def test_profile_update_rejects_privilege_fields_and_wrong_password(client):
+    del app.dependency_overrides[require_approved_student]
+    client.post("/api/v1/auth/register", json=student_payload())
+    client.post(
+        "/api/v1/auth/login",
+        json={"email": "student@example.com", "password": "Student-test-123"},
+    )
+    payload = {
+        "email": "student@example.com",
+        "first_name": "Иван",
+        "last_name": "Иванов",
+        "group_name": "ИС-1",
+    }
+    assert (
+        client.put("/api/v1/auth/me", json={**payload, "role": "admin"}).status_code
+        == 422
+    )
+    assert (
+        client.put("/api/v1/auth/me", json={**payload, "status": "approved"}).status_code
+        == 422
+    )
+    assert (
+        client.put(
+            "/api/v1/auth/me",
+            json={
+                **payload,
+                "current_password": "wrong",
+                "new_password": "Updated-test-456",
+            },
+        ).status_code
+        == 400
+    )
+    assert app.dependency_overrides[get_db]().scalar(select(User)).role == "student"
 
 
 def test_blocked_and_expired_sessions(client):

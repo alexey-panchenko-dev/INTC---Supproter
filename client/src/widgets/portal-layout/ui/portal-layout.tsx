@@ -32,11 +32,11 @@ export function PortalLayout() {
       className={
         isAuth
           ? 'min-h-screen bg-canvas'
-          : 'min-h-screen md:grid md:grid-cols-[220px_1fr] xl:grid-cols-[244px_1fr]'
+          : 'min-h-screen'
       }
     >
       {!isAuth && (
-        <aside className="flex flex-col border-b border-slate-200 bg-white p-4 md:border-r md:border-b-0 md:px-5 md:py-10">
+        <aside className="sticky top-0 z-30 flex flex-col border-b border-slate-200 bg-white p-4 md:fixed md:inset-y-0 md:left-0 md:w-[220px] md:overflow-y-auto md:border-r md:border-b-0 md:px-5 md:py-10 xl:w-[244px]">
           <Link className="flex items-center gap-3 font-extrabold" to="/">
             <span className="grid h-12 w-11 place-items-center rounded-xl bg-sky-200 text-2xl text-sky-700">
               I.
@@ -68,17 +68,13 @@ export function PortalLayout() {
               </NavLink>
             ))}
           </nav>
-          <div className="mt-auto hidden pt-16 text-[10px] text-accent md:block">
-            {t('● Начало большого проекта')}
-            <p className="mt-3 text-slate-400">{t('Всё для учёбы — в одном месте.')}</p>
-          </div>
         </aside>
       )}
       <main
         className={
           isAuth
             ? 'w-full min-w-0'
-            : 'mx-auto w-full max-w-7xl min-w-0 px-5 md:px-8 xl:px-12'
+            : 'w-full min-w-0 px-5 md:ml-[220px] md:w-[calc(100%-220px)] md:px-8 xl:ml-[244px] xl:w-[calc(100%-244px)] xl:px-12'
         }
       >
         {!isAuth && (
@@ -92,14 +88,14 @@ export function PortalLayout() {
               {!loading &&
                 (session ? (
                   <>
-                    <span className="text-ink">
+                    <Link to="/profile" className="text-ink hover:text-sky-700">
                       {session.first_name} {session.last_name}
                       <span className="ml-2 text-muted">
                         {session.role === 'admin'
                           ? t('Администратор')
                           : session.group_name}
                       </span>
-                    </span>
+                    </Link>
                     <button
                       onClick={() => void handleLogout()}
                       disabled={loggingOut}

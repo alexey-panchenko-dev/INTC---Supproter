@@ -5,6 +5,7 @@ import { ChatPage } from '@/pages/chat'
 import { DocumentsPage } from '@/pages/documents'
 import { HomePage } from '@/pages/home'
 import { NotFoundPage } from '@/pages/not-found'
+import { ProfilePage } from '@/pages/profile'
 import { SchedulePage } from '@/pages/schedule'
 import { PortalLayout } from '@/widgets/portal-layout'
 import { AccessGuard } from '@/features/access-guard'
@@ -45,6 +46,14 @@ export const routeConfig: RouteObject[] = [
         element: (
           <AccessGuard>
             <ChatPage />
+          </AccessGuard>
+        ),
+      },
+      {
+        path: 'profile',
+        element: (
+          <AccessGuard>
+            <ProfilePage />
           </AccessGuard>
         ),
       },

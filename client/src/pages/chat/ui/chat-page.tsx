@@ -13,8 +13,12 @@ export function ChatPage() {
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
   const controllerRef = useRef<AbortController | null>(null)
+  const messagesEndRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => () => controllerRef.current?.abort(), [])
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
+  }, [messages])
 
   async function send() {
     const question = input.trim()
@@ -51,46 +55,55 @@ export function ChatPage() {
   }
 
   return (
-    <section className="min-h-[65vh] py-8">
+    <section className="flex min-h-[calc(100dvh-7rem)] flex-col pb-4">
       <PageHeading title={t('ИИ-помощник')} />
       {messages.length === 0 ? (
-        <EmptyState>
-          <h2 className="my-4 text-2xl font-bold text-ink">
-            {t('Знакомимся с колледжем')}
-          </h2>
-          <p>{t('Задайте вопрос о колледже, ответ будет найден в документах.')}</p>
-        </EmptyState>
+        <div className="flex flex-1 items-center justify-center pb-6">
+          <div className="w-full max-w-3xl">
+            <EmptyState>
+              <h2 className="my-4 text-2xl font-bold text-ink">
+                {t('Знакомимся с колледжем')}
+              </h2>
+              <p>{t('Задайте вопрос о колледже, ответ будет найден в документах.')}</p>
+            </EmptyState>
+          </div>
+        </div>
       ) : (
-        <div className="my-6 flex flex-col gap-3">
+        <div className="mb-5 flex flex-1 flex-col gap-3 pb-3">
           {messages.map((message, index) => (
             <div
               key={index}
-              className={
-                message.role === 'user' ? 'self-end font-semibold' : 'self-start'
-              }
+              className={`max-w-[min(760px,88%)] rounded-2xl px-4 py-3 text-sm leading-6 shadow-sm ${
+                message.role === 'user'
+                  ? 'self-end bg-ink font-medium text-white'
+                  : 'self-start border border-sky-300 bg-sky-50 text-ink'
+              }`}
             >
               {message.text || '…'}
             </div>
           ))}
+          <div ref={messagesEndRef} />
         </div>
       )}
-      <div className="flex gap-2">
-        <input
-          className="flex-1 rounded border px-3 py-2"
-          value={input}
-          maxLength={4000}
-          placeholder={t('Ваш вопрос')}
-          aria-label={t('Ваш вопрос')}
-          onChange={(event) => setInput(event.target.value)}
-          onKeyDown={(event) => event.key === 'Enter' && void send()}
-        />
-        <button
-          className="rounded border px-4 py-2"
-          disabled={busy}
-          onClick={() => void send()}
-        >
-          {t('Отправить')}
-        </button>
+      <div className="sticky bottom-0 z-20 -mx-2 mt-auto border-t border-slate-200 bg-canvas/95 px-2 py-4 backdrop-blur">
+        <div className="flex gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-[0_-8px_30px_-22px_rgba(24,43,61,.35)]">
+          <input
+            className="min-w-0 flex-1 rounded-xl border border-transparent bg-slate-50 px-4 py-3 text-sm outline-none focus:border-sky-300 focus:bg-white"
+            value={input}
+            maxLength={4000}
+            placeholder={t('Ваш вопрос')}
+            aria-label={t('Ваш вопрос')}
+            onChange={(event) => setInput(event.target.value)}
+            onKeyDown={(event) => event.key === 'Enter' && void send()}
+          />
+          <button
+            className="min-h-11 shrink-0 rounded-xl bg-sky-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-sky-700 disabled:cursor-wait disabled:opacity-60"
+            disabled={busy || !input.trim()}
+            onClick={() => void send()}
+          >
+            {busy ? t('Подождите…') : t('Отправить')}
+          </button>
+        </div>
       </div>
     </section>
   )

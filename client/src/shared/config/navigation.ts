@@ -24,4 +24,10 @@ export const navigation = [
     icon: '✧',
     description: 'Ответы на вопросы по документам колледжа.',
   },
+  {
+    path: '/profile',
+    title: 'Личный кабинет',
+    icon: '◎',
+    description: 'Личные данные и настройки аккаунта.',
+  },
 ]
