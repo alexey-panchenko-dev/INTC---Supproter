@@ -91,7 +91,7 @@ def register(payload: RegisterRequest, db: DB):
         **payload.model_dump(exclude={"password"}),
         password_hash=hash_password(payload.password),
         role="student",
-        status="approved",
+        status="pending",
     )
     db.add(user)
     try:
@@ -113,8 +113,6 @@ def login(payload: LoginRequest, request: Request, response: Response, db: DB):
     valid = verify_password(payload.password, user.password_hash if user else DUMMY_HASH)
     if not valid or user is None:
         raise HTTPException(401, "Неверная почта или пароль")
-    if user.status != "approved":
-        raise HTTPException(403, "Доступ к аккаунту ограничен администратором")
     previous = request.cookies.get(COOKIE)
     if previous:
         db.execute(
@@ -154,7 +152,7 @@ def me(user: Annotated[User, Depends(current_user)]):
 )
 def update_me(
     payload: ProfileUpdate,
-    user: Annotated[User, Depends(current_user)],
+    user: Annotated[User, Depends(require_approved_student)],
     db: DB,
 ):
     if user.role == "student" and not payload.group_name:

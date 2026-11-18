@@ -54,6 +54,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     })
     setSession(user)
     setError(null)
+    return user
   }
 
   async function logout() {

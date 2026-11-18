@@ -1,5 +1,6 @@
 import type { RouteObject } from 'react-router-dom'
 import { AuthPage } from '@/pages/auth'
+import { AdminStudentsPage } from '@/pages/admin-students'
 import { ApplicationsPage } from '@/pages/applications'
 import { ChatPage } from '@/pages/chat'
 import { DocumentsPage } from '@/pages/documents'
@@ -8,7 +9,7 @@ import { NotFoundPage } from '@/pages/not-found'
 import { ProfilePage } from '@/pages/profile'
 import { SchedulePage } from '@/pages/schedule'
 import { PortalLayout } from '@/widgets/portal-layout'
-import { AccessGuard } from '@/features/access-guard'
+import { AccessGuard, AdminGuard } from '@/features/access-guard'
 
 export const routeConfig: RouteObject[] = [
   {
@@ -54,6 +55,16 @@ export const routeConfig: RouteObject[] = [
         element: (
           <AccessGuard>
             <ProfilePage />
+          </AccessGuard>
+        ),
+      },
+      {
+        path: 'admin/students',
+        element: (
+          <AccessGuard>
+            <AdminGuard>
+              <AdminStudentsPage />
+            </AdminGuard>
           </AccessGuard>
         ),
       },

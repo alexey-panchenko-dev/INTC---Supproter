@@ -21,6 +21,7 @@ from sqlalchemy import delete, func, select, text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, defer
 
+from app.admin_students import router as admin_students_router
 from app.ai_chat import ai_router
 from app.applications import router as applications_router
 from app.auth import require_admin, require_approved_student, require_same_origin
@@ -476,3 +477,4 @@ app.include_router(auth_router)
 app.include_router(schedule_import_router)
 app.include_router(protected)
 app.include_router(ai_router)
+app.include_router(admin_students_router)

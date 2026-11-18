@@ -31,3 +31,10 @@ export const navigation = [
     description: 'Личные данные и настройки аккаунта.',
   },
 ]
+
+export const adminNavigation = {
+  path: '/admin/students',
+  title: 'Проверка студентов',
+  icon: '✓',
+  description: 'Подтверждение и блокировка аккаунтов студентов.',
+}

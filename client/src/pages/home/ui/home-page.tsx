@@ -126,9 +126,19 @@ export function HomePage() {
           <div className="mt-6 flex flex-wrap items-center gap-3">
             <Link
               className="portal-primary px-5 py-3"
-              to={session ? '/schedule' : '/auth?mode=register'}
+              to={
+                session?.status === 'approved'
+                  ? '/schedule'
+                  : session
+                    ? '/'
+                    : '/auth?mode=register'
+              }
             >
-              {session ? t('Открыть расписание') : t('Зарегистрироваться')}
+              {session?.status === 'approved'
+                ? t('Открыть расписание')
+                : session
+                  ? t('Доступ ограничен')
+                  : t('Зарегистрироваться')}
               <span aria-hidden="true">→</span>
             </Link>
             {!session && (
@@ -140,6 +150,24 @@ export function HomePage() {
         </div>
         <CampusIllustration />
       </section>
+
+      {session?.role === 'student' && session.status === 'blocked' && (
+        <section
+          role="alert"
+          className="rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm font-semibold text-red-800 sm:px-6"
+        >
+          {t('Вас заблокировали за недостоверную информацию')}
+        </section>
+      )}
+
+      {session?.role === 'student' && session.status === 'pending' && (
+        <section
+          role="status"
+          className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm font-semibold text-amber-900 sm:px-6"
+        >
+          {t('Ваш аккаунт ожидает проверки администратором')}
+        </section>
+      )}
 
       <section>
         <div className="mb-4 flex items-end justify-between gap-4">

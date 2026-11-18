@@ -97,6 +97,11 @@ class AdminOut(UserOut):
     role: Literal["admin"]
 
 
+class StudentStatusUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    status: Literal["approved", "blocked"]
+
+
 class DocumentOut(ORMModel):
     id: int
     title: str

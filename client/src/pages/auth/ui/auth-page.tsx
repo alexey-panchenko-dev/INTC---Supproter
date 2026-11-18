@@ -62,8 +62,8 @@ export function AuthPage() {
         setSuccess(true)
         navigate(`/auth?mode=login${next}`, { replace: true })
       } else {
-        await login(email, password)
-        navigate(destination, { replace: true })
+        const user = await login(email, password)
+        navigate(user.status === 'approved' ? destination : '/', { replace: true })
       }
     } catch (cause) {
       setError(
@@ -80,7 +80,8 @@ export function AuthPage() {
         {t('Проверяем аккаунт…')}
       </p>
     )
-  if (session) return <Navigate to={destination} replace />
+  if (session)
+    return <Navigate to={session.status === 'approved' ? destination : '/'} replace />
 
   return (
     <section className="mx-auto grid min-h-dvh w-full max-w-[1240px] items-center gap-4 p-4 sm:gap-6 sm:p-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(480px,1fr)] lg:gap-8 lg:p-8">

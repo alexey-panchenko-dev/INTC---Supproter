@@ -123,6 +123,13 @@ def student_payload(**overrides):
     }
 
 
+def approve_registered_student(client):
+    db = app.dependency_overrides[get_db]()
+    user = db.scalar(select(User).where(User.role == "student"))
+    user.status = "approved"
+    db.commit()
+
+
 def test_registration_login_session_logout(client):
     del app.dependency_overrides[require_approved_student]
     response = client.post(
@@ -131,6 +138,7 @@ def test_registration_login_session_logout(client):
     assert response.status_code == 201
     assert response.json()["email"] == "student@example.com"
     assert response.json()["role"] == "student"
+    assert response.json()["status"] == "pending"
     assert "password" not in response.json() and "password_hash" not in response.json()
     db = app.dependency_overrides[get_db]()
     assert db.scalar(select(User)).password_hash != student_payload()["password"]
@@ -150,6 +158,8 @@ def test_registration_login_session_logout(client):
     assert "samesite=strict" in response.headers["set-cookie"].lower()
     cookie = client.cookies.get("intc_session")
     assert client.get("/api/v1/auth/me").json()["group_name"] == "ИС-1"
+    assert client.get("/api/v1/documents").status_code == 403
+    approve_registered_student(client)
     assert client.get("/api/v1/documents").status_code == 200
     assert client.post("/api/v1/auth/logout").status_code == 204
     client.cookies.set("intc_session", cookie)
@@ -182,6 +192,7 @@ def test_registration_validation_and_privilege_escalation(client):
 def test_user_updates_profile_without_changing_role(client):
     del app.dependency_overrides[require_approved_student]
     assert client.post("/api/v1/auth/register", json=student_payload()).status_code == 201
+    approve_registered_student(client)
     assert (
         client.post(
             "/api/v1/auth/login",
@@ -217,6 +228,7 @@ def test_user_updates_profile_without_changing_role(client):
 def test_profile_update_rejects_privilege_fields_and_wrong_password(client):
     del app.dependency_overrides[require_approved_student]
     client.post("/api/v1/auth/register", json=student_payload())
+    approve_registered_student(client)
     client.post(
         "/api/v1/auth/login",
         json={"email": "student@example.com", "password": "Student-test-123"},
@@ -262,7 +274,10 @@ def test_blocked_and_expired_sessions(client):
     user.status = "blocked"
     db.commit()
     assert client.get("/api/v1/documents").status_code == 403
-    assert client.post("/api/v1/auth/login", json=credentials).status_code == 403
+    response = client.post("/api/v1/auth/login", json=credentials)
+    assert response.status_code == 200
+    assert response.json()["status"] == "blocked"
+    assert client.get("/api/v1/auth/me").json()["status"] == "blocked"
     user.status = "approved"
     db.scalar(select(AuthSession)).expires_at = 0
     db.commit()
@@ -300,7 +315,7 @@ def test_admin_login_without_group_and_cross_origin_rejected(client):
 
 
 def login_schedule_admin(client):
-    del app.dependency_overrides[require_approved_student]
+    app.dependency_overrides.pop(require_approved_student, None)
     db = app.dependency_overrides[get_db]()
     db.add(
         User(
@@ -362,6 +377,7 @@ def test_schedule_write_rejects_guest_other_group_blocked_admin_and_cross_origin
     url = "/api/v1/schedule?group=ИС-1&day=2026-11-17"
     assert client.put(url, json=schedule_payload()).status_code == 401
     client.post("/api/v1/auth/register", json=student_payload())
+    approve_registered_student(client)
     client.post(
         "/api/v1/auth/login",
         json={
@@ -452,15 +468,86 @@ def test_chat_knowledge_reads_pdf_bytes_from_database(client, monkeypatch, tmp_p
     monkeypatch.setattr(
         ai_chat,
         "pdf_to_text",
-        lambda data: "В колледже действует кодекс чести."
-        if data == b"database-pdf"
-        else "",
+        lambda data: (
+            "В колледже действует кодекс чести." if data == b"database-pdf" else ""
+        ),
     )
 
     knowledge = ai_chat.load_knowledge(db)
 
     assert "Правила колледжа" in knowledge
     assert "В колледже действует кодекс чести." in knowledge
+
+
+def test_admin_reviews_students_and_student_cannot_use_admin_api(client):
+    del app.dependency_overrides[require_approved_student]
+    assert client.post("/api/v1/auth/register", json=student_payload()).status_code == 201
+    credentials = {
+        "email": student_payload()["email"],
+        "password": student_payload()["password"],
+    }
+    assert client.post("/api/v1/auth/login", json=credentials).status_code == 200
+    assert client.get("/api/v1/admin/students").status_code == 403
+    assert client.post("/api/v1/auth/logout").status_code == 204
+
+    login_schedule_admin(client)
+    response = client.get("/api/v1/admin/students")
+    assert response.status_code == 200
+    students = response.json()
+    assert len(students) == 1
+    assert students[0]["first_name"] == "Иван"
+    assert students[0]["last_name"] == "Иванов"
+    assert students[0]["group_name"] == "ИС-1"
+    assert students[0]["status"] == "pending"
+
+    student_id = students[0]["id"]
+    assert (
+        client.put(
+            f"/api/v1/admin/students/{student_id}/status",
+            json={"status": "blocked"},
+            headers={"Origin": "https://evil.example"},
+        ).status_code
+        == 403
+    )
+    response = client.put(
+        f"/api/v1/admin/students/{student_id}/status",
+        json={"status": "approved"},
+    )
+    assert response.status_code == 200
+    assert response.json()["status"] == "approved"
+    assert client.get("/api/v1/admin/students").json() == []
+
+    response = client.put(
+        f"/api/v1/admin/students/{student_id}/status",
+        json={"status": "blocked"},
+    )
+    assert response.status_code == 200
+    assert response.json()["status"] == "blocked"
+    assert (
+        client.put(
+            f"/api/v1/admin/students/{student_id}/status",
+            json={"status": "pending"},
+        ).status_code
+        == 422
+    )
+
+    assert client.post("/api/v1/auth/logout").status_code == 204
+    response = client.post("/api/v1/auth/login", json=credentials)
+    assert response.status_code == 200
+    assert response.json()["status"] == "blocked"
+    assert client.get("/api/v1/documents").status_code == 403
+    assert (
+        client.put(
+            "/api/v1/auth/me",
+            json={
+                "email": "student@example.com",
+                "first_name": "Иван",
+                "last_name": "Иванов",
+                "group_name": "ИС-1",
+            },
+        ).status_code
+        == 403
+    )
 
 
 def test_chat_knowledge_falls_back_when_database_pdf_is_unreadable(
@@ -487,9 +574,7 @@ def test_chat_knowledge_falls_back_when_database_pdf_is_unreadable(
     monkeypatch.setattr(
         ai_chat,
         "pdf_to_text",
-        lambda data: "Информация из резервного PDF."
-        if data == b"bundled-pdf"
-        else "",
+        lambda data: "Информация из резервного PDF." if data == b"bundled-pdf" else "",
     )
 
     knowledge = ai_chat.load_knowledge(db)
@@ -591,6 +676,7 @@ def test_application_write_protection_for_every_mutation(client):
 
     writes(401)
     client.post("/api/v1/auth/register", json=student_payload())
+    approve_registered_student(client)
     client.post(
         "/api/v1/auth/login",
         json={"email": "student@example.com", "password": student_payload()["password"]},

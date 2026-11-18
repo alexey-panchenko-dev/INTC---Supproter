@@ -2,7 +2,7 @@ import { LanguageSwitch, useI18n } from '@/shared/i18n'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useState } from 'react'
 import { useAuth } from '@/entities/session'
-import { navigation } from '@/shared/config/navigation'
+import { adminNavigation, navigation } from '@/shared/config/navigation'
 
 export function PortalLayout() {
   const { t } = useI18n()
@@ -23,18 +23,14 @@ export function PortalLayout() {
   }
   const { pathname } = useLocation()
   const isAuth = pathname === '/auth'
+  const visibleNavigation =
+    session?.role === 'admin' ? [...navigation, adminNavigation] : navigation
   const currentTitle =
-    navigation.find((item) => item.path === pathname)?.title ??
+    [...navigation, adminNavigation].find((item) => item.path === pathname)?.title ??
     (pathname === '/auth' ? 'Вход и регистрация' : 'Страница')
 
   return (
-    <div
-      className={
-        isAuth
-          ? 'min-h-screen bg-canvas'
-          : 'min-h-screen'
-      }
-    >
+    <div className={isAuth ? 'min-h-screen bg-canvas' : 'min-h-screen'}>
       {!isAuth && (
         <aside className="sticky top-0 z-30 flex flex-col border-b border-slate-200 bg-white p-4 md:fixed md:inset-y-0 md:left-0 md:w-[220px] md:overflow-y-auto md:border-r md:border-b-0 md:px-5 md:py-10 xl:w-[244px]">
           <Link className="flex items-center gap-3 font-extrabold" to="/">
@@ -52,7 +48,7 @@ export function PortalLayout() {
             className="mt-4 flex gap-1 overflow-x-auto md:mt-0 md:grid md:gap-2"
             aria-label={t('Основное меню')}
           >
-            {navigation.map((item) => (
+            {visibleNavigation.map((item) => (
               <NavLink
                 key={item.path}
                 to={item.path}

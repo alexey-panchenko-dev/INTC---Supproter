@@ -6,7 +6,7 @@ type SessionContextValue = {
   loading: boolean
   error: string | null
   refresh: () => Promise<void>
-  login: (email: string, password: string) => Promise<void>
+  login: (email: string, password: string) => Promise<Session>
   logout: () => Promise<void>
 }
 
